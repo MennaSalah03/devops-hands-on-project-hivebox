@@ -6,7 +6,6 @@ import httpx
 from fastapi import FastAPI
 
 
-
 app = FastAPI()
 
 # API's root
@@ -25,7 +24,7 @@ async def version():
 @app.get("/temperature")
 async def temperature():
     """Gets the temperature data from the opensensemap api"""
-    api_url = "https://api.opensensemap.org/boxes/"
+    api_url = "https://api.opensensemap.org/boxes/data"
     now = datetime.now(timezone.utc)
     one_hour_ago = now - timedelta(hours = 1)
     response = httpx.get(url = api_url , params = {
@@ -34,8 +33,20 @@ async def temperature():
         "format": "json",
         "from-date": one_hour_ago.strftime("%Y-%m-%dT%H:%M:%S.000000Z"),
         "to-date": now.strftime("%Y-%m-%dT%H:%M:%S.000000Z"),
-        "download": "false",
-        "operation": "arithmeticMean",
-        "window": "1h"
-        })
-    return response.json()
+        "download": "false"
+        },
+        timeout = 30.0)
+    avg_temp = get_avg_temp(response)
+    return {"average_temperature": avg_temp}
+
+def get_avg_temp(api_response):
+    """calculates and returns the average temperature
+        with the opensense API json response to"""
+    json_response = api_response.json()
+    temp_sum = 0
+    temp_count = len(json_response)
+    for sensor_idx in range(temp_count):
+        temp = float(json_response[sensor_idx]["value"])
+        temp_sum += temp
+    average_temperature = temp_sum / temp_count
+    return average_temperature

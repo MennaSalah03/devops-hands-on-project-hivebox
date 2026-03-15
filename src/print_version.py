@@ -4,7 +4,7 @@ def version_getter(version_file):
     """Retreives the current version tag of the hivebox app (and image)"""
     try:
         with open(version_file, "r", encoding="utf-8") as file:
-            version = file.readline()
+            version = file.readline().rstrip()
     except FileNotFoundError:
         print("Version file not found.")
         sys.exit(1)
