@@ -1,0 +1,14 @@
+name: hivebox-ci
+
+on:
+  workflow_dispatch:
+
+jobs:
+  hivebox-build-and-test:
+    runs-on: ubuntu-24.04
+    steps:
+      # Linting
+      # building image using docker
+      # unit testing
+      
+    
