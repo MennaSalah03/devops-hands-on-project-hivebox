@@ -1,2 +1,4 @@
-venv/
+*venv/
 *.swp
+src/__pycache__/
+src/version.txt
