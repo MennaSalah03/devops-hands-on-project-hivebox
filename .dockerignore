@@ -1,1 +1,10 @@
 .git
+src/__pycache__
+/.venve
+/.github
+/hivebox_venv
+Dockerfile
+README.md
+requirements.txt
+./main.py
+build.sh

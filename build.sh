@@ -1,6 +1,8 @@
 #! /bin/env bash
 
-./version-getter.sh
+VERSION_FILE=src/version.txt
+
+git tag | tail -1 > $VERSION_FILE
 
 VERSION=$(cat src/version.txt)
 
