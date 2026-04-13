@@ -2,3 +2,5 @@
 *.swp
 src/__pycache__/
 src/version.txt
+.vscode/
+__pycache__/

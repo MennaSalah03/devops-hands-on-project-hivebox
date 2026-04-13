@@ -1,9 +1,9 @@
 """ Hivebox's API Application using Fastapi """
 
-from print_version import version_getter
 from datetime import datetime, timezone, timedelta
+from fastapi import FastAPI, HTTPException
 import httpx
-from fastapi import FastAPI
+from src.print_version import version_getter
 
 
 app = FastAPI()
@@ -27,7 +27,8 @@ async def temperature():
     api_url = "https://api.opensensemap.org/boxes/data"
     now = datetime.now(timezone.utc)
     one_hour_ago = now - timedelta(hours = 1)
-    response = httpx.get(url = api_url , params = {
+    try:
+        response = httpx.get(url = api_url , params = {
         "bbox": "-180,-90,180,90",
         "phenomenon": "Temperatur",
         "format": "json",
@@ -36,17 +37,23 @@ async def temperature():
         "download": "false"
         },
         timeout = 30.0)
-    avg_temp = get_avg_temp(response)
+        avg_temp = get_avg_temp(response)
+    except ValueError as e:
+        raise HTTPException(status_code = 500, detail = str(e)) from e
     return {"average_temperature": avg_temp}
 
 def get_avg_temp(api_response):
     """calculates and returns the average temperature
-        with the opensense API json response to"""
+        with the opensense API json response to """
     json_response = api_response.json()
     temp_sum = 0
-    temp_count = len(json_response)
-    for sensor_idx in range(temp_count):
-        temp = float(json_response[sensor_idx]["value"])
-        temp_sum += temp
-    average_temperature = temp_sum / temp_count
-    return average_temperature
+    temp_count = 0
+    for sensor in json_response:
+        try:
+            temp_sum += float(sensor["value"])
+            temp_count += 1
+        except (ValueError, TypeError, KeyError):
+            continue # ignore other types than float
+    if temp_count == 0:
+        raise ValueError("no valid temperature readings found")
+    return temp_sum / temp_count

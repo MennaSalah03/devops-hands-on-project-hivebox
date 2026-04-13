@@ -2,8 +2,8 @@
 
 VERSION_FILE=src/version.txt
 
-git tag | tail -1 > $VERSION_FILE
+git tag -l --sort=-taggerdate | grep v[0-9].[0-9].[0-9] | head -1 > $VERSION_FILE
 
-VERSION=$(cat src/version.txt)
+VERSION=$(cat $VERSION_FILE)
 
-docker image build -t hivebox:$VERSION -t hivebox:latest .
+docker image build -t hivebox:${VERSION:1} -t hivebox:latest .
