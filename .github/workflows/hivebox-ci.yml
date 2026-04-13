@@ -23,11 +23,11 @@ jobs:
         run: docker run --rm -i hadolint/hadolint < Dockerfile
 
       - name: Lint Python source
-        run: docker run --rm your-image pylint src/*.py
+        run: docker run --rm -v $(pwd):/app cytopia/pylint pylint /app/src/*.py --fail-under=7.0
       # Step 2: Build
       - name: building the docker image for hivebox
         run: ./build.sh
       
       # Step 3: (Unit) Testing
       - name: Unit Testing
-        run: docker run --rm your-image pytest src/
+        run: docker run --rm hivebox:latest pytest src/
