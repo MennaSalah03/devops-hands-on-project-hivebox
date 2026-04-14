@@ -25,9 +25,13 @@ jobs:
       - name: Lint Python source
         run: docker run --rm -v $(pwd):/app cytopia/pylint pylint /app/src/*.py --fail-under=7.0
       # Step 2: Build
+      # Build only happens in case of the latest commit having a tag
       - name: building the docker image for hivebox
+        id: build
         run: ./build.sh
       
       # Step 3: (Unit) Testing
+      # Only runs if the build runs successfully
       - name: Unit Testing
+        if: steps.build.outputs.built == 'true'
         run: docker run --rm hivebox:latest pytest src/
