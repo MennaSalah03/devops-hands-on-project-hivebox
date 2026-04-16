@@ -1,10 +1,14 @@
 name: hivebox-ci
 
 on:
-  push: # on pushing to phases' branches
+  push:
     branches-ignore:
       - main
-  pull_request:
+    tags:
+      - 'v*'
+  pull_request: 
+    branches:  
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -17,15 +21,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # Step 1: Linting 
+      # Linting 
       - name: Lint Dockerfile
         run: docker run --rm -i hadolint/hadolint < Dockerfile
 
       - name: Lint Python source
         run: docker run --rm -v $(pwd):/app cytopia/pylint pylint /app/src/*.py --fail-under=7.0
-      # Step 2: Build
-      # Build only happens in case of the latest commit having a tag
+        # Step 2: Build
+        # Build and beyond only happens in case of the latest commit having a tag
       - name: building the docker image for hivebox
         id: build
         run: ./build.sh
