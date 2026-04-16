@@ -3,7 +3,7 @@
 from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI, HTTPException
 import httpx
-from src.print_version import version_getter
+from print_version import version_getter
 
 
 app = FastAPI()
