@@ -4,8 +4,6 @@ on:
   push:
     branches-ignore:
       - main
-    tags:
-      - 'v*'
   pull_request: 
     branches:  
       - main
@@ -32,13 +30,62 @@ jobs:
         run: docker run --rm -v $(pwd):/app cytopia/pylint pylint /app/src/*.py --fail-under=7.0
         # Step 2: Build
         # Build and beyond only happens in case of the latest commit having a tag
+        
       - name: building the docker image for hivebox
         id: build
         run: ./build.sh
       
-      # Step 3: (Unit) Testing
+      # 3- (Unit) Testing
       # Only runs if the build runs successfully
       - name: Unit Testing
         if: steps.build.outputs.built == 'true'
         run: docker run --rm --entrypoint uv hivebox:latest run pytest src/
 
+  # Setting up OSSF scoreboard
+  scorecard:
+    needs: hivebox-build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Run analysis
+        uses: ossf/scorecard-action@f49aabe0b5af0936a0987cfb85d86b75731b0186 # v2.4.1
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        with:
+          name: SARIF file
+          path: results.sarif
+          retention-days: 5
+
+      - name: Upload to code-scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+  # pushing our app image to dockerhub
+  push-to-registry:
+    needs: scorecard
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push image to Docker Hub
+        run: |
+          docker tag hivebox:latest ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:${{ github.ref_name }}
+          docker tag hivebox:latest ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:${{ github.ref_name }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:latest
