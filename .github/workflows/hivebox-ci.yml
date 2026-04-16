@@ -40,4 +40,5 @@ jobs:
       # Only runs if the build runs successfully
       - name: Unit Testing
         if: steps.build.outputs.built == 'true'
-        run: docker run --rm hivebox:latest pytest src/
+        run: docker run --rm --entrypoint uv hivebox:latest run pytest src/
+
