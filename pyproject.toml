@@ -1,0 +1,15 @@
+[project]
+name = "devops-hands-on-project-hivebox"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.135.3",
+    "httpx[h2]>=0.28.1",
+    "pydantic-settings>=2.13.1",
+    "pylint>=4.0.5",
+    "pytest>=9.0.2",
+    "slowapi>=0.1.9",
+    "uvicorn[standard]>=0.43.0",
+]

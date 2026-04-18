@@ -14,6 +14,17 @@
 The project aims to cover the whole Software Development Life Cycle (SDLC). That means each phase will cover all aspects of DevOps, such as planning, coding, containers, testing, continuous integration, continuous delivery, infrastructure, etc.
 
 ---
+## Current Progress
+Phase | Progress 
+--- | --- 
+Phase 1 | Done
+Phase 2 | Done
+Phase 3 | In progress...
+Phase 4 | Not Started
+Phase 5 | Not Started
+Phase 6 | Not Started
+Phase 7 | Not Started
+
 
 ## Phases 1 and 2: Introduction and DevOps Core
 
@@ -26,4 +37,10 @@ The build is done by running the `build.sh` script in the repository's root dire
 
 ## Phase 3
 
-Currenty in progress...
+This Phase marks the beginning of using the Kanban Board to tackle the upcoming tasks. So far, their usage included adding the "backlog" tasks provided in the phase's instruction without much breaking tasks up just yet. This would need improvement in later phases.
+
+This phase's highlight is the continuous integration with a tool like Github Actions (the one I will be using) or Jenkins. However, it also had another part, which is the app's API using a framework (Flask, Fastapi or Django). I have opted to choose fastapi because it seemed competent, but not too simple as I have heard when researching Flask.
+
+It took about ~8 hours to reach the state of having the `/version` and the `/temperature` endpoints to be created successfully.
+
+TBC...
