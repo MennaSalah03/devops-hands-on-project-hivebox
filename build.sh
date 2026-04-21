@@ -10,5 +10,7 @@ if [ -z "$VERSION" ]; then
 fi
 echo "$VERSION" > src/version.txt
 
-docker image build -t hivebox:${VERSION:1} -t hivebox:latest .
+IMAGE_VERSION=${VERSION:1}
+docker image build -t hivebox:$IMAGE_VERSION -t hivebox:latest .
 echo "built=true" >> $GITHUB_OUTPUT
+echo "image_version=$IMAGE_VERSION" >> $GITHUB_OUTPUT

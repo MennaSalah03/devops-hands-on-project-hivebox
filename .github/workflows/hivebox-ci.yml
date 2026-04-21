@@ -2,8 +2,6 @@ name: hivebox-ci
 
 on:
   push:
-    branches-ignore:
-      - main
   pull_request: 
     branches:  
       - main
@@ -16,9 +14,12 @@ concurrency:
 jobs:
   hivebox-build-and-test:
     runs-on: ubuntu-24.04
+    outputs:
+      built: ${{ steps.build.outputs.built }}
+      image_version: ${{ steps.build.outputs.image_version }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@49c0eed3a423f00c872b5c3c9f1bbca9e8aae799 #v4.13.1
         with:
           fetch-depth: 0
 
@@ -40,6 +41,19 @@ jobs:
       - name: Unit Testing
         if: steps.build.outputs.built == 'true'
         run: docker run --rm --entrypoint uv hivebox:latest run pytest tests/
+      # 4- push to registry
+      - name: Log in to Docker Hub
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 #v3.7.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push image to Docker Hub
+        run: |
+          docker tag hivebox:latest ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:${{ steps.build.outputs.image_version }}
+          docker tag hivebox:latest ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:${{ steps.build.outputs.image_version }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:latest
 
   # Setting up OSSF scoreboard
   scorecard:
@@ -72,20 +86,3 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: results.sarif
-  # pushing our app image to dockerhub
-  push-to-registry:
-    needs: scorecard
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Push image to Docker Hub
-        run: |
-          docker tag hivebox:latest ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:${{ github.ref_name }}
-          docker tag hivebox:latest ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:latest
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:${{ github.ref_name }}
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:latest
