@@ -3,7 +3,7 @@ name: hivebox-ci
 on:
   push:
   pull_request: 
-    branches:  
+    branches:
       - main
   workflow_dispatch:
 
@@ -19,7 +19,7 @@ jobs:
       image_version: ${{ steps.build.outputs.image_version }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@49c0eed3a423f00c872b5c3c9f1bbca9e8aae799 #v4.13.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
         with:
           fetch-depth: 0
 
@@ -43,7 +43,7 @@ jobs:
         run: docker run --rm --entrypoint uv hivebox:latest run pytest tests/
       # 4- push to registry
       - name: Log in to Docker Hub
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 #v3.7.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 #v4.17.21
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -83,6 +83,6 @@ jobs:
           retention-days: 5
 
       - name: Upload to code-scanning
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@29181f28d55fcc032f21a33f8ad0847965867c55 #v3.1.5
         with:
           sarif_file: results.sarif
