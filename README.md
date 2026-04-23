@@ -1,38 +1,29 @@
 [![Dynamic DevOps Roadmap](https://img.shields.io/badge/Dynamic_DevOps_Roadmap-559e11?style=for-the-badge&logo=Vercel&logoColor=white)](https://devopsroadmap.io/getting-started/)
-
 [![Community](https://img.shields.io/badge/Join_Community-%23FF6719?style=for-the-badge&logo=substack&logoColor=white)](https://newsletter.devopsroadmap.io/subscribe)
-
 [![Telegram Group](https://img.shields.io/badge/Telegram_Group-%232ca5e0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/DevOpsHive/985)
-
 [![Fork on GitHub](https://img.shields.io/badge/Fork_On_GitHub-%2336465D?style=for-the-badge&logo=github&logoColor=white)](https://github.com/DevOpsHiveHQ/devops-hands-on-project-hivebox/fork)
-
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/MennaSalah03/devops-hands-on-project-hivebox/badge)](https://scorecard.dev/viewer/?uri=github.com/MennaSalah03/devops-hands-on-project-hivebox)
 
   
   
-
 # HiveBox - DevOps End-to-End Hands-On Project
 
-  
-
 <p align="center">
-
 <a href="https://devopsroadmap.io/projects/hivebox" style="display: block; padding: .5em 0; text-align: center;">
-
 <img alt="HiveBox - DevOps End-to-End Hands-On Project" border="0" width="90%" src="https://devopsroadmap.io/img/projects/hivebox-devops-end-to-end-project.png" />
-
 </a>
-
 </p>
 
 
 PS: stay tuned for my attempt at making an alternative logo for the project :D
-  
 
 This multi-phase project is mainly for learning purposes and aims to cover the whole Software Development Life Cycle (SDLC). That entails that the phases would cover all aspects of DevOps, such as planning, coding, containers, orchestration, various types of testing, continuous integration, continuous delivery, infrastructure, etc.
 
-  
-I you are attempting to do this project or a similar fashioned one, I have compiled most of the resources that helped me throughout my journey, you can find it in the `docs/RESOURCES.md` file or [here](https://github.com/MennaSalah03/devops-hands-on-project-hivebox/blob/main/docs/RESOURCES.md))
+If you are attempting to do this project or a similar fashioned one, I have compiled most of the resources that helped me throughout my journey, you can find it in the `docs/RESOURCES.md` file or [here](https://github.com/MennaSalah03/devops-hands-on-project-hivebox/blob/main/docs/RESOURCES.md))
+
+The final architecture of the project:
+
+![hivebox](https://devopsroadmap.io/assets/images/hivebox-architecture-a7fe504c22027e87b6f7b188cd57d2d8.png)
 
 ---
 ## Current Progress
@@ -45,17 +36,61 @@ I you are attempting to do this project or a similar fashioned one, I have compi
 | Phase 4 | ⏳Next      |
 | Phase 5 | ♾️ Pending |
 | Phase 6 | ♾️ Pending |
-The final architecture of the project:
 
+current repository structure:
 
-![hivebox](https://devopsroadmap.io/assets/images/hivebox-architecture-a7fe504c22027e87b6f7b188cd57d2d8.png)
-
-for running the project at the current stage, you'll need to navigate to the working directory and run the following:
 ```
-./build.sh
+.
+├── Dockerfile
+├── README.md
+├── build.sh
+├── docs
+│   └── RESOURCES.md
+├── .github/workflows
+|	├── hivebox-ci.yml
+|	└── scorecard.yml
+├── src
+│   ├── main.py
+│   ├── print_version.py
+│   └── version.txt
+├── tests
+│   ├── __init__.py
+│   ├── conftest.py
+│   ├── test_app.py
+│   └── test_version_printer.py
+├── pyproject.toml
+└── uv.lock
 ```
 
-## [Phase 1]((https://devopsroadmap.io/foundations/module-01/) & [ Phase 2](https://devopsroadmap.io/foundations/module-02/):  Project Foundation
+Current Tech Stack:
+- Backend: Python 3.12, FastAPI
+- Package Manager: uv
+- Testing: Pytest, MockMagic (unittest)
+- CI/CD: GitHub Actions
+- Security: OpenSSF Scorecard, Hadolint
+- Registry: Docker Hub
+
+### How to Use the App
+Pull the image from [DockerHub](https://hub.docker.com/repository/docker/menna011/hivebox/general) and run it
+
+```
+docker run --rm -d -p 8000:8000/tcp hivebox:latest
+```
+*Access the API at http://localhost:8000 or view the docs at http://localhost:8000/docs.*
+
+For developer setup:
+1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer)
+2. Sync environment: `uv sync`
+3. Run Tests using pytest: `pytest tests/`
+4. Local Build: bash build.sh (This script handles local image creation). Ensure it's executable before running. `chmod +x build.sh`
+
+### App's API Endpoints:
+All the current endpoints are `GET` requests that retreives data from the API.
+- `/`: Welcome message `{"message": "Welcome to HiveBox"}`
+- `/version`: Returns current SemVer `{"version": "1.2.0"}`
+- `/temperature`: Returns global temperature sensors average `"{"average_temperature": 22.5}`
+
+## Phase 1 & Phase 2: Project Foundation
 
 In phases 1 and 2, we start to to set up our working tree and experiment with project management tools and git best practices we will be using in the next phases.
 
@@ -73,7 +108,7 @@ In phases 1 and 2, we start to to set up our working tree and experiment with pr
 
 ### Technical Challenges & Engineering Decisions
 - Kanban: GitHub has a built-in Kanban board feature on GUI which is highly accessible to use especially for a solo-developed project and it hasn't been complicated so far. It was also the roadmap's recommended methodology for the project.
-## [Phase 3: Start - Laying the Base](https://devopsroadmap.io/foundations/module-03/)
+## Phase 3: Start - Laying the Base
 start date: 28/2/2026 
 finish date: 19/4/2026
 time taken: 30+ hrs.
@@ -122,7 +157,7 @@ Practices and habits:
 - Having more strict time deadlines for features.
 Technical additions:
 - Adding image promotion (to latest) conditions.
-- Fixing vulnerabilities suggested by OSSF scoreboard and giving some priority to learning and applying security practices.
+- Fixing vulnerabilities suggested by OSSF scoreboard (score is 3.6/10) and giving higher priority to learning and applying security practices.
 - Learning to attach fixed issues to commits.
 ---
 
