@@ -2,10 +2,11 @@ name: hivebox-ci
 
 on:
   push:
-    branches-ignore:
+    branches:
       - main
+      - feature/*
   pull_request: 
-    branches:  
+    branches: 
       - main
   workflow_dispatch:
 
@@ -15,10 +16,13 @@ concurrency:
 
 jobs:
   hivebox-build-and-test:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
+    outputs:
+      built: ${{ steps.build.outputs.built }}
+      image_version: ${{ steps.build.outputs.image_version }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
         with:
           fetch-depth: 0
 
@@ -40,17 +44,31 @@ jobs:
       - name: Unit Testing
         if: steps.build.outputs.built == 'true'
         run: docker run --rm --entrypoint uv hivebox:latest run pytest tests/
+      # 4- push to registry
+      - name: Log in to Docker Hub
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 #v4.17.21
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push image to Docker Hub
+        run: |
+          docker tag hivebox:latest ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:${{ steps.build.outputs.image_version }}
+          docker tag hivebox:latest ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:latest
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:${{ steps.build.outputs.image_version }}
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:latest
 
   # Setting up OSSF scoreboard
-  scorecard:
+  ossf_scorecard:
     needs: hivebox-build-and-test
+    if: github.ref_name == 'main'
     runs-on: ubuntu-latest
     permissions:
       security-events: write
       id-token: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
         with:
           persist-credentials: false
 
@@ -69,23 +87,6 @@ jobs:
           retention-days: 5
 
       - name: Upload to code-scanning
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@29181f28d55fcc032f21a33f8ad0847965867c55 #v3.1.5
         with:
           sarif_file: results.sarif
-  # pushing our app image to dockerhub
-  push-to-registry:
-    needs: scorecard
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Push image to Docker Hub
-        run: |
-          docker tag hivebox:latest ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:${{ github.ref_name }}
-          docker tag hivebox:latest ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:latest
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:${{ github.ref_name }}
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/hivebox:latest
