@@ -2,7 +2,7 @@
 import sys
 import os
 
-def version_getter(version_file):
+def version_getter(version_file: str) -> str:
     """Retreives the current version tag of the hivebox app (and image)"""
     base_dir = os.path.dirname(os.path.abspath(__file__))
     try:

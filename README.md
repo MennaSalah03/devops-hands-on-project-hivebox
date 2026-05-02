@@ -33,7 +33,7 @@ The final architecture of the project:
 | Phase 1 | ✅ Done     |
 | Phase 2 | ✅ Done     |
 | Phase 3 | ✅ Done     |
-| Phase 4 | ⏳Next      |
+| Phase 4 | ⏳ WIP      |
 | Phase 5 | ♾️ Pending |
 | Phase 6 | ♾️ Pending |
 

@@ -29,4 +29,5 @@ Started file On: 18/4/2026
 
 # ⭐ Phase 4
 
-TBC...
+- [API design](https://www.youtube.com/watch?v=XvFmUE-36Kc)
+- [How Prometheus Monitoring works | Prometheus Architecture explained](https://www.youtube.com/watch?v=h4Sl21AKiDg&t=31s)

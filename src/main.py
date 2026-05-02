@@ -21,7 +21,7 @@ async def version():
     return {"version": str(version_getter("version.txt"))}
 
 # Temperature Enpoint
-@app.get("/temperature")
+@app.get("/temperature", description = "shows average temperature and status for all senseboxes data")
 async def temperature():
     """Gets the temperature data from the opensensemap api"""
     api_url = "https://api.opensensemap.org/boxes/data"
@@ -40,9 +40,10 @@ async def temperature():
         avg_temp = get_avg_temp(response)
     except ValueError as e:
         raise HTTPException(status_code = 500, detail = str(e)) from e
-    return {"average_temperature": avg_temp}
+    tmp_status = temperature_status(avg_temp)
+    return {"average_temperature": avg_temp, "status": tmp_status}
 
-def get_avg_temp(api_response):
+def get_avg_temp(api_response: dict) -> float:
     """calculates and returns the average temperature
         with the opensense API json response to """
     json_response = api_response.json()
@@ -57,3 +58,16 @@ def get_avg_temp(api_response):
     if temp_count == 0:
         raise ValueError("no valid temperature readings found")
     return temp_sum / temp_count
+
+def temperature_status(average_temperature: float) -> str:
+    """ Returns the status of temperature according to the range it belongs to.
+        Less than 10 deg.: too cold
+        Between 10 adn 36 deg.: Good
+        Higher than 36: Too hot
+        """
+    if average_temperature <= 10.0:
+        return "Too Cold"
+    elif average_temperature > 10.0 or average_temperature <= 36.0:
+        return "Good"
+    elif average_temperature > 36.0:
+        return "Too Hot"
