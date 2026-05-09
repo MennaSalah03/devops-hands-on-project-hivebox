@@ -3,10 +3,25 @@
 from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI, HTTPException
 import httpx
+from prometheus_client import Counter, Gauge, make_asgi_app
 from print_version import version_getter
 
 
 app = FastAPI()
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)
+
+REQUEST_COUNTER = Counter(
+    "app_requests_total",
+    "Total number of requests to the app",
+    ["endpoint"],
+)
+
+RANDOMM_NUMBER_GAUGE = Gauge(
+    "App random number",
+    "Current value of random number"
+)
+
 
 # API's root
 @app.get("/")
