@@ -2,8 +2,9 @@
 
 from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 import httpx
-from prometheus_client import Counter, Gauge, make_asgi_app
+from prometheus_client import Counter, Gauge, Summary, make_asgi_app
 from print_version import version_getter
 
 
@@ -11,15 +12,21 @@ app = FastAPI()
 metrics_app = make_asgi_app()
 app.mount("/metrics", metrics_app)
 
-REQUEST_COUNTER = Counter(
-    "app_requests_total",
-    "Total number of requests to the app",
+# Setting up the metrics targets
+TEMPERATURE_REQUEST_COUNTER = Counter(
+    "hivebox_http_requests_total",
+    "Total number of HTTP requests processed, labeled by endpoint",
     ["endpoint"],
 )
 
-RANDOMM_NUMBER_GAUGE = Gauge(
-    "App random number",
-    "Current value of random number"
+TEMPERATURE_GAUGE = Gauge(
+    "hivebox_temperature_average_celsius",
+    "The most recent average temperature fetched from openSenseMap"
+)
+
+TEMPERATURE_REQUEST_LATENCY = Summary(
+    "hivebox_temperature_request_duration_in_seconds",
+    "Time spent getting and processing temperature data from all sense boxes"
 )
 
 
@@ -30,32 +37,46 @@ async def root():
     return {"message": "welcome to the hivebox API"}
 
 # App Version Endpoint
-@app.get("/version")
+@app.get(
+        "/version",
+        description = "gets the current app version in the SemVer form vx.x.x",
+        response_class = JSONResponse
+        )
 async def version():
     """Gets the version of the app to the API"""
     return {"version": str(version_getter("version.txt"))}
 
 # Temperature Enpoint
-@app.get("/temperature", description = "shows average temperature and status for all senseboxes data")
+@app.get(
+        "/temperature",
+        description = "shows average temperature and status for all senseboxes data",
+        response_class = JSONResponse
+        )
 async def temperature():
     """Gets the temperature data from the opensensemap api"""
     api_url = "https://api.opensensemap.org/boxes/data"
     now = datetime.now(timezone.utc)
     one_hour_ago = now - timedelta(hours = 1)
-    try:
-        response = httpx.get(url = api_url , params = {
-        "bbox": "-180,-90,180,90",
-        "phenomenon": "Temperatur",
-        "format": "json",
-        "from-date": one_hour_ago.strftime("%Y-%m-%dT%H:%M:%S.000000Z"),
-        "to-date": now.strftime("%Y-%m-%dT%H:%M:%S.000000Z"),
-        "download": "false"
-        },
-        timeout = 30.0)
-        avg_temp = get_avg_temp(response)
-    except ValueError as e:
-        raise HTTPException(status_code = 500, detail = str(e)) from e
+    with TEMPERATURE_REQUEST_LATENCY.time():
+        try:
+            response = httpx.get(url = api_url , params = {
+            "bbox": "-180,-90,180,90",
+            "phenomenon": "Temperatur",
+            "format": "json",
+            "from-date": one_hour_ago.strftime("%Y-%m-%dT%H:%M:%S.000000Z"),
+            "to-date": now.strftime("%Y-%m-%dT%H:%M:%S.000000Z"),
+            "download": "false"
+            },
+            timeout = 30.0)
+            avg_temp = get_avg_temp(response)
+        except ValueError as e:
+            raise HTTPException(status_code = 500, detail = str(e)) from e
+    # Pushing metrics to registry
+    TEMPERATURE_REQUEST_COUNTER.labels(endpoint="/temperature").inc()
+    TEMPERATURE_GAUGE.set(avg_temp)
+    # Get temperature status
     tmp_status = temperature_status(avg_temp)
+    # return enpoint with average temperature and status.
     return {"average_temperature": avg_temp, "status": tmp_status}
 
 def get_avg_temp(api_response: dict) -> float:
@@ -82,7 +103,7 @@ def temperature_status(average_temperature: float) -> str:
         """
     if average_temperature <= 10.0:
         return "Too Cold"
-    elif average_temperature > 10.0 or average_temperature <= 36.0:
+    elif average_temperature > 10.0 and average_temperature <= 36.0:
         return "Good"
     elif average_temperature > 36.0:
         return "Too Hot"
