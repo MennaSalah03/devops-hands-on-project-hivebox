@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hivebox-configmap
+data:
+  OPNESENSE_API_URL: "https://api.opensensemap.org/boxes/data"
+  API_TIMEOUT: "30" # seconds
+
+immutable: true

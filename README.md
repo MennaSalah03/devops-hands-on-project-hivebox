@@ -33,7 +33,7 @@ The final architecture of the project:
 | Phase 1 | ✅ Done     |
 | Phase 2 | ✅ Done     |
 | Phase 3 | ✅ Done     |
-| Phase 4 | ⏳ WIP      |
+| Phase 4 | ⏳ WIP (25%)     |
 | Phase 5 | ♾️ Pending |
 | Phase 6 | ♾️ Pending |
 
@@ -57,7 +57,12 @@ current repository structure:
 │   ├── __init__.py
 │   ├── conftest.py
 │   ├── test_app.py
-│   └── test_version_printer.py
+│   └── test_version_printer.py	
+├── k8s_manifests
+|	├── kind.yaml
+|	├── hivebox-confimap.yaml
+|	├── hivebox-deployment.yaml
+|	└── hivebox-service.yaml
 ├── pyproject.toml
 └── uv.lock
 ```
@@ -67,7 +72,9 @@ Current Tech Stack:
 - Package Manager: uv
 - Testing: Pytest, MockMagic (unittest)
 - CI/CD: GitHub Actions
+- Observability: Prometheus (python's prometheus-client)
 - Security: OpenSSF Scorecard, Hadolint
+- Orchestration: Kubernetes (KIND, kubectl)
 - Registry: Docker Hub
 
 ### How to Use the App
@@ -82,13 +89,15 @@ For developer setup:
 1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer)
 2. Sync environment: `uv sync`
 3. Run Tests using pytest: `pytest tests/`
-4. Local Build: bash build.sh (This script handles local image creation). Ensure it's executable before running. `chmod +x build.sh`
+4. Install KIND
+5. Local Build: bash build.sh (This script handles local image creation). Ensure it's executable before running. `chmod +x build.sh`
 
 ### App's API Endpoints:
 All the current endpoints are `GET` requests that retreives data from the API.
 - `/`: Welcome message `{"message": "Welcome to HiveBox"}`
 - `/version`: Returns current SemVer `{"version": "1.2.0"}`
 - `/temperature`: Returns global temperature sensors average `"{"average_temperature": 22.5}`
+- `/metrics`: Returns metrics about the `/temperature` endpoint (Counter for reuests, Gauge of the current average temperature, and the interval for data to load).
 
 ## Phase 1 & Phase 2: Project Foundation
 
@@ -109,9 +118,10 @@ In phases 1 and 2, we start to to set up our working tree and experiment with pr
 ### Technical Challenges & Engineering Decisions
 - Kanban: GitHub has a built-in Kanban board feature on GUI which is highly accessible to use especially for a solo-developed project and it hasn't been complicated so far. It was also the roadmap's recommended methodology for the project.
 ## Phase 3: Start - Laying the Base
-start date: 28/2/2026 
-finish date: 19/4/2026
+start date: 28/2/2026.<br>
+finish date: 19/4/2026.<br>
 time taken: 30+ hrs.
+
 ### Phase Deliverables:
 - Creation of the app's API (I used [FastAPI](https://fastapi.tiangolo.com/)) with 2 endpoints required.
 	- `/version` to display the supposed current app's version.
@@ -131,7 +141,7 @@ time taken: 30+ hrs.
 	* Setting up an OSSF scoreboard.
 
 
-## Personal Technical Growth
+### Personal Technical Growth
 - Exploration of APIs using the `OpensenseAPI` and it's docs.
 - Learning FastAPI to create `/temperature` and `/version` endpoints and more about APIs in general.
 - Doing unit tests with  `pytest` and `unittest`'s `MockMagic` (helped with creating mock data for testing endpoints).
@@ -158,7 +168,35 @@ Practices and habits:
 Technical additions:
 - Adding image promotion (to latest) conditions.
 - Fixing vulnerabilities suggested by OSSF scoreboard (score is 3.6/10) and giving higher priority to learning and applying security practices.
-- Learning to attach fixed issues to commits.
+- Learning to link fixed issues to commits.
 ---
 
+## Phase 4: Expand - Constructing a Shell
+Start date: 2/5/2026 <br>
+Finish date: Still in progress<br>
+Time taken: 4+ hrs.<br>
+
+### Phase Deliverables
+
+- Ensuring the senseboxes configurable by env vars.
+- Creating a `/metrics` endpoint that contain metrics for the app's endpoints
+- Editing the `/temperature` endpoint to include a status field indicating the average temperature range.
+  - Less than 10: Too Cold
+  - Between 11-36: Good
+  - More than 37: Too Hot
+- Create a KIND configuration to run with Ingress-Nginx.
+- Create Kubernetes core manifests to deploy the application.
+- Create and run integration tests for the app.
+- Run SonarQube for code quality, security, and static analysis.
+- Run Terrascan for Kubernetes manifest misconfigurations and vulnerabilities.
+- Apply Best Practices for CI.
+- Create a GitHub Actions workflow for CD with a step to release by pushing a versioned Docker image to a container registry.
+
+### Personal Technical Growth
+
+
+
+### Technical Challenges & Engineering Decisions
+
+---
 *This Project is Part of my YearOfDevOps journey which I post regularly about on [Twitter/X](https://x.com/Menna_Salah03)*

@@ -30,4 +30,6 @@ Started file On: 18/4/2026
 # ⭐ Phase 4
 
 - [API design](https://www.youtube.com/watch?v=XvFmUE-36Kc)
-- [How Prometheus Monitoring works | Prometheus Architecture explained](https://www.youtube.com/watch?v=h4Sl21AKiDg&t=31s)
+- [How Prometheus Monitoring works | Prometheus Architecture explained](https://www.youtube.com/watch?v=h4Sl21AKiDg&t=31s) (English)(Video)
+- [Kubernetes Networking ](https://www.youtube.com/playlist?list=PLSAko72nKb8QWsfPpBlsw-kOdMBD7sra-) (English)(video)
+- [KIND Series Articles](https://dev.to/iamunnip/series/22807) (English)(Articles)
