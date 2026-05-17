@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: hivebox-app
-          image: hivebox:latest
+          image: menna011/hivebox:latest
           resources:
             requests:
               memory: "50Mi"
