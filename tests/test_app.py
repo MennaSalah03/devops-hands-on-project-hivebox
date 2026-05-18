@@ -34,8 +34,6 @@ def test_semver_format(client):
     assert re.match(pattern, version), \
         f"version {version} should match vX.X.X format."
 # ================== temperature endpoint tests ==================
-
-
 def test_average_temperature(client, mock_sensor_data):
     """ test the averaging of the temperatures is correct
         for this testcase and mock data, the average should be 22.0"""
@@ -70,3 +68,21 @@ def test_temperature_huge_amount_of_sensor_data(client, large_sensor_data):
     values = [float(s["value"]) for s in large_sensor_data.json()]
     expected_avg = sum(values) / len(values)
     assert round(response.json()["average_temperature"], 5) == round(expected_avg, 5)
+
+def test_temperature_too_hot_status(client, hot_temperature_data):
+    """ Tests that the endpoint shows the correct status on hot temperatures """
+    with patch("src.main.httpx.get", return_value = hot_temperature_data):
+        response = client.get("/temperature")
+        assert response.json()["status"] == "Too Hot"
+
+def test_temperature_good_status(client, good_temperature_data):
+    """ Tests that the endpoint shows the correct status on good temperatures """
+    with patch("src.main.httpx.get", return_value = good_temperature_data):
+        response = client.get("/temperature")
+        assert response.json()["status"] == "Good"
+
+def test_temperature_too_cold_status(client, cold_temperature_data):
+    """ Tests that the endpoint shows the correct status on cold temperatures """
+    with patch("src.main.httpx.get", return_value = cold_temperature_data):
+        response = client.get("/temperature")
+        assert response.json()["status"] == "Too Cold"

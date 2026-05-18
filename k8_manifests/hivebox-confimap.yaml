@@ -4,6 +4,6 @@ metadata:
   name: hivebox-configmap
 data:
   OPNESENSE_API_URL: "https://api.opensensemap.org/boxes/data"
-  API_TIMEOUT: "30" # seconds
+  API_TIMEOUT: "30.0" # seconds
 
 immutable: true

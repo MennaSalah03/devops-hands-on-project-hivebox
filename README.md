@@ -174,7 +174,7 @@ Technical additions:
 ## Phase 4: Expand - Constructing a Shell
 Start date: 2/5/2026 <br>
 Finish date: Still in progress<br>
-Time taken: 4+ hrs.<br>
+Time taken: 7+ hrs.<br>
 
 ### Phase Deliverables
 
