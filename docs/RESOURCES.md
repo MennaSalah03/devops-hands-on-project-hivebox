@@ -16,20 +16,26 @@ Started file On: 18/4/2026
 
 # ⭐Phase 3
 
-## APIs
+### APIs
 - [APIs for Beginners - FreeCodeCamp](https://www.youtube.com/watch?v=WXsD0ZgxjRw&t=91s) (video) (English)
 - [FastAPI Playlist - Code With D](https://www.youtube.com/playlist?list=PLGbzY-VLUfcpzhB-iyGvju-NMMez_NNP9) (video) (Arabic)
 
-## Project Management & Documentation
+### Project Management & Documentation
 
 - [How to document your code like a pro](https://www.youtube.com/watch?v=L7Ry-Fiij-M) (Video) (English)
-## Continuous Integration
+### Continuous Integration
 - [GitHub Actions Beginner to Pro](https://courses.devopsdirective.com/github-actions-beginner-to-pro/lessons/00-introduction/01-main) (videos + text course) (English)
-- [Martin Fowler - Continuous Integration](https://martinfowler.com/articles/continuousIntegration.html) (Article) (recommended for CI concepts) (English)
+- [Martin Fowler - Continuous Integration](https://martinfowler.com/articles/continuousIntegration.html) (Article) (recommended for CI concepts)(English)
 
 # ⭐ Phase 4
 
-- [API design](https://www.youtube.com/watch?v=XvFmUE-36Kc)
+- [API design](https://www.youtube.com/watch?v=XvFmUE-36Kc) (Video)(English)
 - [How Prometheus Monitoring works | Prometheus Architecture explained](https://www.youtube.com/watch?v=h4Sl21AKiDg&t=31s) (English)(Video)
+### Kubernetes (K8s)
+- [Kubernetes Basics](https://www.youtube.com/playlist?list=PLLasX02E8BPCrIhFrc_ZiINhbRkYMKdPT) (Video)(English)
 - [Kubernetes Networking ](https://www.youtube.com/playlist?list=PLSAko72nKb8QWsfPpBlsw-kOdMBD7sra-) (English)(video)
-- [KIND Series Articles](https://dev.to/iamunnip/series/22807) (English)(Articles)
+
+### Continuous Integration
+- [KIND Series Articles](https://dev.to/iamunnip/series/22807) (Articles)(English)
+- [PyTest • REST API Integration Testing with Python](https://www.youtube.com/watch?v=7dgQRVqF1N0) (Video)(English)
+- [ The only Integration Testing video you need to watch ](https://www.youtube.com/watch?v=mHMAneHNFhM) (Video)(English)
