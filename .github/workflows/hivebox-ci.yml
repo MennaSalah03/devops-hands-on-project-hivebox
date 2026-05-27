@@ -143,10 +143,10 @@ jobs:
         with:
           directory: ./k8s_manifests
           framework: kubernetes
-          output_format: sarif
-          output_file_path: checkov.sarif
-        continue-on-error: true
-
+          output_format: cli,sarif
+          output_file_path: console, checkov.sarif
+          continue-on-error: true
+          
       - name: Upload Checkov results to GitHub Security
         uses: github/codeql-action/upload-sarif@84498526a009a99c875e83ef4821a8ba52de7c22 # v2.25.5
         if: always()
