@@ -127,6 +127,17 @@ jobs:
         with:
           sarif_file: 'semgrep.sarif'
 
+  checkov_iac_scanner:
+    needs: hivebox-build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
+        with:
+          persist-credentials: false
+
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@v12
         with:
@@ -136,7 +147,7 @@ jobs:
           output_file_path: checkov.sarif
         continue-on-error: true
 
-      - name: Upload Checkov results
+      - name: Upload Checkov results to GitHub Security
         uses: github/codeql-action/upload-sarif@84498526a009a99c875e83ef4821a8ba52de7c22 # v2.25.5
         if: always()
         with:
