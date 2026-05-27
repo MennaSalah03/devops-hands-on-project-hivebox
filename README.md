@@ -99,6 +99,26 @@ All the current endpoints are `GET` requests that retreives data from the API.
 - `/temperature`: Returns global temperature sensors average `"{"average_temperature": 22.5}`
 - `/metrics`: Returns metrics about the `/temperature` endpoint (Counter for reuests, Gauge of the current average temperature, and the interval for data to load).
 
+
+### CD/CD
+```
+push to main (no tag)
+├── CI runs lint ✅
+├── CI runs tests ✅
+└── CI skips build/push ⏭️  ← no versioned image produced
+
+push tag v1.2.3 to main
+├── CI runs lint ✅
+├── CI runs tests ✅
+├── CI builds hivebox:1.2.3 ✅
+├── CI pushes :ci-candidate to GHCR ✅
+└── CI uploads version artifact ✅
+      ↓
+CD triggered
+├── pulls :ci-candidate
+├── retags as :1.2.3 and :latest
+└── pushes final tags ✅
+```
 ## Phase 1 & Phase 2: Project Foundation
 
 In phases 1 and 2, we start to to set up our working tree and experiment with project management tools and git best practices we will be using in the next phases.

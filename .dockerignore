@@ -1,10 +1,12 @@
 .git
 src/__pycache__
-/.venve
-/.github
-/hivebox_venv
+/.venve/
+.vscode/
+/.github/
+/hivebox_venv/
+k8_manifests/
+.pytest_cache
 Dockerfile
 README.md
 requirements.txt
-./main.py
 build.sh

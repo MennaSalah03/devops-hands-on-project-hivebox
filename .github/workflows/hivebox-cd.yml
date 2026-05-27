@@ -1,0 +1,62 @@
+name: hivebox-cd
+
+on:
+  workflow_run:
+    workflows: ["hivebox-ci"]
+    types:
+      - completed
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hivebox-deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
+
+      - name: Download version artifact
+        uses: actions/download-artifact@a9bc5e6ef2cb54c177f32aa5726adaa15e7e2d59 # v3.1.0
+        with:
+          name: image-version
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create kind cluster
+        uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
+        with:
+          config: k8s_manifests/kind.yaml
+
+      - name: Load image into kind cluster
+        run: |
+          docker pull ghcr.io/${{ github.repository_owner }}/hivebox:$IMAGE_VERSION
+          kind load docker-image ghcr.io/${{ github.repository_owner }}/hivebox:$IMAGE_VERSION
+
+      - name: Update image in deployment manifest
+        run: |
+          kubectl set image deployment/hivebox \
+            hivebox=ghcr.io/${{ github.repository_owner }}/hivebox:$IMAGE_VERSION \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Apply k8s manifests
+        run: |
+          kubectl apply -f k8s_manifests/hivebox-configmap.yaml
+          kubectl apply -f k8s_manifests/hivebox-deployment.yaml
+          kubectl apply -f k8s_manifests/hivebox-service.yaml
+
+      - name: Verify rollout
+        run: kubectl rollout status deployment/hivebox --timeout=120s
