@@ -117,7 +117,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Run Semgrep Python Security Scan
-        uses: semgrep/semgrep-action@db2be62416a2f777f74b71f62ac0f9eea28863de # v1.163.0
+        uses: semgrep/semgrep@887f1f48a6f35e692870e68651100db7496036cf # v1.164.0
         with:
           config: p/python # Tells Semgrep to look specifically for Python vulnerabilities
           generateSarif: "1"
@@ -133,14 +133,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       security-events: write
-      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
       - name: Terrascan IaC scanner
-        uses: tenable/terrascan-action@adf9e7f58b198d55bf5f705feed4a4889d600464 # v1.5.0
+        uses: tenable/terrascan-action@dd7e921056c6f25b25bff3cf791e063ed7fc3a78 # v1.5.0
         with:
           iac_type: 'k8s'
           iac_version: 'v1'
