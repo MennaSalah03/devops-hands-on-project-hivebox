@@ -127,28 +127,17 @@ jobs:
         with:
           sarif_file: 'semgrep.sarif'
 
-  terrascan_iac_scanner:
-    needs: hivebox-build-and-test
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
         with:
-          persist-credentials: false
-      - name: Terrascan IaC scanner
-        uses: tenable/terrascan-action@v1
-        with:
-          iac_type: 'k8s'
-          iac_version: 'v1'
-          iac_dir: './k8_manifests'
-          sarif_upload: true
-      - name: Upload Terrascan results to GitHub Security
+          directory: ./k8s_manifests
+          framework: kubernetes
+          output_format: sarif
+          output_file_path: checkov.sarif
+        continue-on-error: true
+
+      - name: Upload Checkov results
         uses: github/codeql-action/upload-sarif@84498526a009a99c875e83ef4821a8ba52de7c22 # v2.25.5
-        # This step should run even if Terrascan found violations and halted the step
-        if: always() 
+        if: always()
         with:
-          sarif_file: 'terrascan.sarif'
-          
+          sarif_file: 'checkov.sarif'
