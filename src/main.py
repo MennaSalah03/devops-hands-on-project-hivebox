@@ -1,12 +1,13 @@
 """ Hivebox's API Application using Fastapi """
 
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
+
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
-import httpx
 from prometheus_client import Counter, Gauge, Summary, make_asgi_app
-from print_version import version_getter
 
+from print_version import version_getter
 
 app = FastAPI()
 metrics_app = make_asgi_app()
@@ -55,20 +56,21 @@ async def version():
 async def temperature():
     """Gets the temperature data from the opensensemap api"""
     api_url = "https://api.opensensemap.org/boxes/data"
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     one_hour_ago = now - timedelta(hours = 1)
     with TEMPERATURE_REQUEST_LATENCY.time():
         try:
-            response = httpx.get(url = api_url , params = {
-            "bbox": "-180,-90,180,90",
-            "phenomenon": "Temperatur",
-            "format": "json",
-            "from-date": one_hour_ago.strftime("%Y-%m-%dT%H:%M:%S.000000Z"),
-            "to-date": now.strftime("%Y-%m-%dT%H:%M:%S.000000Z"),
-            "download": "false"
-            },
-            timeout = 30.0)
-            avg_temp = get_avg_temp(response)
+            async with httpx.AsyncClient() as client:
+                response = await client.get(url = api_url , params = {
+                "bbox": "-180,-90,180,90",
+                "phenomenon": "Temperatur",
+                "format": "json",
+                "from-date": one_hour_ago.strftime("%Y-%m-%dT%H:%M:%S.000000Z"),
+                "to-date": now.strftime("%Y-%m-%dT%H:%M:%S.000000Z"),
+                "download": "false"
+                },
+                timeout = 30.0)
+                avg_temp = get_avg_temp(response)
         except ValueError as e:
             raise HTTPException(status_code = 500, detail = str(e)) from e
     # Pushing metrics to registry

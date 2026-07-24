@@ -1,6 +1,7 @@
 """ Getting the version tag and printing it """
-import sys
 import os
+import sys
+
 
 def version_getter(version_file: str) -> str:
     """Retreives the current version tag of the hivebox app (and image)"""
