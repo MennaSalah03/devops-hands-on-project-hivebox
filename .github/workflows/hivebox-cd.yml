@@ -2,9 +2,12 @@ name: hivebox-cd
 
 on:
   workflow_run:
-    workflows: ["hivebox-ci"]
+    workflows: 
+      - "hivebox-ci"
     types:
       - completed
+    branches: 
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -13,13 +16,11 @@ concurrency:
 
 jobs:
   hivebox-deploy:
-    if: |
-      github.event.workflow_run.conclusion == 'success' &&
-      startsWith(github.event.workflow_run.head_branch, 'refs/tags/')
-
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
-      packages: read
+      packages: write
+      contents: read
 
     steps:
       - name: Checkout code
@@ -31,6 +32,10 @@ jobs:
           name: image-version
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Export Image Version to Environment
+        run: |
+          echo "IMAGE_VERSION=$(cat version.txt)" >> $GITHUB_ENV
 
       - name: Log in to GHCR
         uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
@@ -63,3 +68,11 @@ jobs:
 
       - name: Verify rollout
         run: kubectl rollout status deployment/hivebox --timeout=120s
+
+      - name: Verify rollout
+        run: kubectl rollout status deployment/hivebox --timeout=120s
+
+      - name: Promote image to latest
+        run: |
+          docker tag ghcr.io/${{ github.repository_owner }}/hivebox:$IMAGE_VERSION ghcr.io/${{ github.repository_owner }}/hivebox:latest
+          docker push ghcr.io/${{ github.repository_owner }}/hivebox:latest
