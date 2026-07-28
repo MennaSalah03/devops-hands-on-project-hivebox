@@ -33,8 +33,8 @@ The final architecture of the project:
 | Phase 1 | ✅ Done     |
 | Phase 2 | ✅ Done     |
 | Phase 3 | ✅ Done     |
-| Phase 4 | ⏳ WIP (50%)     |
-| Phase 5 | ♾️ Pending |
+| Phase 4 | ✅ Done     |
+| Phase 5 | ⏳ WIP (10%) |
 | Phase 6 | ♾️ Pending |
 
 current repository structure:
@@ -48,7 +48,8 @@ current repository structure:
 │   └── RESOURCES.md
 ├── .github/workflows
 |	├── hivebox-ci.yml
-|	└── scorecard.yml
+|	├── hivebox-cd.yml
+|	└── scorecard.yml	
 ├── src
 │   ├── main.py
 │   ├── print_version.py
@@ -102,23 +103,22 @@ All the current endpoints are `GET` requests that retreives data from the API.
 
 ### CD/CD
 ```
-push to main (no tag)
+push changes to main
 ├── CI runs lint ✅
-├── CI runs tests ✅
-└── CI skips build/push ⏭️  ← no versioned image produced
-
-push tag v1.2.3 to main
-├── CI runs lint ✅
-├── CI runs tests ✅
-├── CI builds hivebox:1.2.3 ✅
+├── CI runs tests (unit and integration tests) ✅
+├── CI builds hivebox:SHA ✅
 ├── CI pushes :ci-candidate to GHCR ✅
-└── CI uploads version artifact ✅
+├── CI uploads version artifact ✅
+└── Terrascan, OSSF scoreboard, SAST jobs run and upload sarif files to GitHub ✅
       ↓
 CD triggered
 ├── pulls :ci-candidate
-├── retags as :1.2.3 and :latest
+├── Create KIND cluster and spin up the pod(s).
+├── Verify rollout
+├── retags as :1.2.3 (if it exists) and :latest
 └── pushes final tags ✅
 ```
+
 ## Phase 1 & Phase 2: Project Foundation
 
 In phases 1 and 2, we start to to set up our working tree and experiment with project management tools and git best practices we will be using in the next phases.
