@@ -8,7 +8,6 @@ on:
       - completed
     branches: 
       - main
-  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -25,6 +24,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
+
+      - name: Set global lowercase owner
+        run: echo "OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Download version artifact
         uses: actions/download-artifact@v4
@@ -51,14 +53,8 @@ jobs:
 
       - name: Load image into kind cluster
         run: |
-          docker pull ghcr.io/${{ github.repository_owner }}/hivebox:$IMAGE_VERSION
-          kind load docker-image ghcr.io/${{ github.repository_owner }}/hivebox:$IMAGE_VERSION
-
-      - name: Update image in deployment manifest
-        run: |
-          kubectl set image deployment/hivebox \
-            hivebox=ghcr.io/${{ github.repository_owner }}/hivebox:$IMAGE_VERSION \
-            --dry-run=client -o yaml | kubectl apply -f -
+          docker pull ghcr.io/${OWNER_LC}/hivebox:$IMAGE_VERSION
+          kind load docker-image ghcr.io/${OWNER_LC}/hivebox:$IMAGE_VERSION
 
       - name: Apply k8s manifests
         run: |
@@ -66,13 +62,15 @@ jobs:
           kubectl apply -f k8s_manifests/hivebox-deployment.yaml
           kubectl apply -f k8s_manifests/hivebox-service.yaml
 
-      - name: Verify rollout
-        run: kubectl rollout status deployment/hivebox --timeout=120s
+      - name: Update image in running deployment
+        run: |
+          kubectl set image deployment/hivebox \
+            hivebox=ghcr.io/${OWNER_LC}/hivebox:$IMAGE_VERSION
 
       - name: Verify rollout
         run: kubectl rollout status deployment/hivebox --timeout=120s
 
       - name: Promote image to latest
         run: |
-          docker tag ghcr.io/${{ github.repository_owner }}/hivebox:$IMAGE_VERSION ghcr.io/${{ github.repository_owner }}/hivebox:latest
-          docker push ghcr.io/${{ github.repository_owner }}/hivebox:latest
+          docker tag ghcr.io/${OWNER_LC}/hivebox:$IMAGE_VERSION ghcr.io/${OWNER_LC}/hivebox:latest
+          docker push ghcr.io/${OWNER_LC}/hivebox:latest
