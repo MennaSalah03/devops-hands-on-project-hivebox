@@ -49,11 +49,11 @@ current repository structure:
 ├── .github/workflows
 |	├── hivebox-ci.yml
 |	├── hivebox-cd.yml
-|	└── scorecard.yml	
+|	└── scorecard.yml
 ├── src
 │   ├── main.py
 │   ├── print_version.py
-│   └── version.txt
+│   └── version.txt (Created by `build.sh`)
 ├── tests
 │   ├── __init__.py
 │   ├── conftest.py
@@ -79,14 +79,7 @@ Current Tech Stack:
 - Registry: Docker Hub
 
 ### How to Use the App
-Pull the image from [DockerHub](https://hub.docker.com/repository/docker/menna011/hivebox/general) and run it
-
-```
-docker run --rm -d -p 8000:8000/tcp hivebox:latest
-```
-*Access the API at http://localhost:8000 or view the docs at http://localhost:8000/docs.*
-
-For developer setup:
+For developer local setup:
 1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer)
 2. Sync environment: `uv sync`
 3. Run Tests using pytest: `pytest tests/`
@@ -193,8 +186,8 @@ Technical additions:
 
 ## Phase 4: Expand - Constructing a Shell
 Start date: 2/5/2026 <br>
-Finish date: Still in progress<br>
-Time taken: 7+ hrs.<br>
+Finish date: 30/6/2026 <br>
+Time taken: 20+ hrs.<br>
 
 ### Phase Deliverables
 
@@ -217,6 +210,16 @@ Time taken: 7+ hrs.<br>
 
 
 ### Technical Challenges & Engineering Decisions
+
+
+
+
+## Phase 5: Transform - Finishing the Structure
+Start date: 30/6/2026 <br>
+Finish date: WIP <br>
+Time taken: 15+ hrs.<br>
+
+
 
 ---
 *This Project is Part of my YearOfDevOps journey which I post regularly about on [Twitter/X](https://x.com/Menna_Salah03)*

@@ -1,14 +1,6 @@
 #!/usr/bin/env bash
 
-TAG=$(git describe --tags --exact-match 2>/dev/null)
-
-if [ -n "$TAG" ]; then
-  VERSION="$TAG"
-else
-  # Fallback for untagged commits: short SHA (or GITHUB_SHA)
-  VERSION=$(git rev-parse --short HEAD)
-fi
-
+VERSION=$(git rev-parse --short HEAD)
 echo "$VERSION" > src/version.txt
 
 docker image build -t hivebox:$VERSION .
