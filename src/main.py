@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from prometheus_client import Counter, Gauge, Summary, make_asgi_app
 
+from config import config
 from print_version import version_getter
 
 app = FastAPI()
@@ -50,18 +51,19 @@ async def version():
 # Temperature Enpoint
 @app.get(
         "/temperature",
-        description = "shows average temperature and status for all senseboxes data",
+        description = "shows average temperature and status for all senseboxes the were updated at most 1 hour from time of request",
         response_class = JSONResponse
         )
 async def temperature():
     """Gets the temperature data from the opensensemap api"""
-    api_url = "https://api.opensensemap.org/boxes/data"
+
     now = datetime.now(UTC)
     one_hour_ago = now - timedelta(hours = 1)
+    
     with TEMPERATURE_REQUEST_LATENCY.time():
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(url = api_url , params = {
+                response = await client.get(url = config.api_url , params = {
                 "bbox": "-180,-90,180,90",
                 "phenomenon": "Temperatur",
                 "format": "json",
