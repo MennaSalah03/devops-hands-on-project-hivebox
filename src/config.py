@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     "configs"
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
-    api_url = "https://api.opensensemap.org/boxes/data"
+    api_url: str = "https://api.opensensemap.org/boxes/data"
 
 
 config = Settings()

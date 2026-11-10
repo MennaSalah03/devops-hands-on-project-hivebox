@@ -1,7 +1,10 @@
 """ unit tests for app """
 from unittest.mock import MagicMock
+
 import pytest
+
 from src.main import get_avg_temp, temperature_status
+
 
 # ================== temperature calculation ==================
 def test_calculates_correct_average(mock_sensor_data):

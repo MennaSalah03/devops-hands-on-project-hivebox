@@ -1,6 +1,6 @@
 """ Integration testing for app """
-from unittest.mock import patch, AsyncMock
 import re
+from unittest.mock import AsyncMock, patch
 
 MOCK_TARGET = "src.main.httpx.AsyncClient.get"
 # ================== Endpoints status checks ==================

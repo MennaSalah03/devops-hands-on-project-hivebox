@@ -15,3 +15,9 @@ dependencies = [
     "slowapi>=0.1.9",
     "uvicorn[standard]>=0.43.0",
 ]
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "--cov=src/ --cov-fail-under=70"

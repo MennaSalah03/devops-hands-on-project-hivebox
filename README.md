@@ -3,6 +3,7 @@
 [![Telegram Group](https://img.shields.io/badge/Telegram_Group-%232ca5e0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/DevOpsHive/985)
 [![Fork on GitHub](https://img.shields.io/badge/Fork_On_GitHub-%2336465D?style=for-the-badge&logo=github&logoColor=white)](https://github.com/DevOpsHiveHQ/devops-hands-on-project-hivebox/fork)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/MennaSalah03/devops-hands-on-project-hivebox/badge)](https://scorecard.dev/viewer/?uri=github.com/MennaSalah03/devops-hands-on-project-hivebox)
+![CI](https://github.com/MennaSalah03/devops-hands-on-project-hivebox/actions/workflows/hivebox-ci.yml/badge.svg)
 
   
   
@@ -76,7 +77,7 @@ Current Tech Stack:
 - Observability: Prometheus (python's prometheus-client)
 - Security: OpenSSF Scorecard, Hadolint
 - Orchestration: Kubernetes (KIND, kubectl)
-- Registry: Docker Hub
+- Registry: github container registry (ghcr.io)
 
 ### How to Use the App
 For developer local setup:
@@ -108,7 +109,6 @@ CD triggered
 ├── pulls :ci-candidate
 ├── Create KIND cluster and spin up the pod(s).
 ├── Verify rollout
-├── retags as :1.2.3 (if it exists) and :latest
 └── pushes final tags ✅
 ```
 
