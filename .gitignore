@@ -1,6 +1,9 @@
 *venv/
 *.swp
-src/__pycache__/
-src/version.txt
-.vscode/
 __pycache__/
+.vscode/
+.pytest_cache/
+.ruff_cache/
+
+src/version.txt
+.env
