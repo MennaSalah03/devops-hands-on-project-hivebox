@@ -50,7 +50,12 @@ jobs:
         run: echo "v0.0.0" > src/version.txt
 
       - name: Unit Testing
-        run: uv run pytest tests/
+        env:
+          VALKEY_URL: "redis://localhost:6379"
+          MINIO_ENDPOINT: "localhost:9000"
+          MINIO_ACCESS_KEY: "test-access"
+          MINIO_SECRET_KEY: "test-secret"
+        run: uv run pytest
 
       # Build docker image
       - name: building the docker image for hivebox
