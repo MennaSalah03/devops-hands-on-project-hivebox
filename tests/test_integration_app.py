@@ -1,25 +1,23 @@
 """ Integration testing for app """
+import json
 import re
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, patch
 
-MOCK_TARGET = "src.main.httpx.AsyncClient.get"
-# ================== Endpoints status checks ==================
+from src.main import run_fetch_and_store_cycle
+
+
+# ================== Root status check ==================
 def test_root(client):
     """ Test the response of API root endpoint """
     response = client.get("/")
     assert response.status_code == 200
-
+# ================== version endpoint tests ==================
 def test_version(client):
     """ Test the response of version endpoint """
     response = client.get("/version")
     assert response.status_code == 200
 
-def test_temperature_endpoint(client, mock_sensor_data):
-    """ Test the reponse of temperature endpoint """
-    with patch("src.main.httpx.get", return_value = mock_sensor_data):
-        response = client.get("/temperature")
-        assert response.status_code == 200
-# ================== version endpoint tests ==================
 def test_version_not_null(client):
     """ Test that the version at the endpoint isn't null """
     response = client.get("/version")
@@ -33,52 +31,78 @@ def test_version_not_null(client):
 #     assert re.match(pattern, version), \
 #         f"version {version} should match vX.X.X format."
 # ================== temperature endpoint tests ==================
-def test_average_temperature(client, mock_sensor_data):
-    """ test the averaging of the temperatures is correct
-        for this testcase and mock data, the average should be 22.0"""
-    with patch(MOCK_TARGET, new = AsyncMock(return_value = mock_sensor_data)):
-        response = client.get("/temperature")
-        assert round(response.json()["average_temperature"], 9) == 22.522630037
+@patch("src.main.valkey_client.get", new_callable=AsyncMock)
+def test_temperature_cache_hit(
+    mock_valkey_get,
+    client,
+    ):
+    """ If cache has data, return 200 and the parsed JSON payload. """
+    expected_payload = {
+        "average_temperature": 22.5,
+        "status": "Good",
+        "timestamp": datetime.now(tz=UTC).isoformat()
+    }
+    mock_valkey_get.return_value = json.dumps(expected_payload)
+
+    response = client.get("/temperature")
+
+    assert response.status_code == 200
+    assert response.json() == expected_payload
+    mock_valkey_get.assert_awaited_once_with("temperature")
 
 
-def test_temperature_corrupt_data_is_handled(client, corrupt_sensor_data):
-    """ testing the case when a sensor sending data instead of a float.
-    Not filtering non-float numbers would cause the test to fail. """
-    with patch(MOCK_TARGET, new = AsyncMock(return_value = corrupt_sensor_data)):
-        response = client.get("/temperature")
-        assert response.status_code == 200
+@patch("src.main.valkey_client.get", new_callable=AsyncMock)
+def test_temperature_cache_miss(
+    mock_valkey_get,
+    client,
+    ):
+    """ If cache has no, return 503. """
+    mock_valkey_get.return_value = None
 
-def test_temperature_empty_data_not_accepted(client, empty_sensor_data):
-    """ Testing of when empty data list is sent """
-    with patch(MOCK_TARGET, new = AsyncMock(return_value = empty_sensor_data)):
-        response = client.get("/temperature")
-        assert response.status_code == 500
+    response = client.get("/temperature")
 
-def test_temperature_huge_amount_of_sensor_data(client, large_sensor_data):
-    """ Tests the temperature endpoint with a large input from the sensors """
-    with patch(MOCK_TARGET, new=AsyncMock(return_value = large_sensor_data)):
-        response = client.get("/temperature")
-    values = [float(s["value"]) for s in large_sensor_data.json()]
-    expected_avg = sum(values) / len(values)
-    assert round(response.json()["average_temperature"], 5) == round(expected_avg, 5)
+    assert response.status_code == 503
+    assert "detail" in response.json()
+    mock_valkey_get.assert_awaited_once_with("temperature")
+# ================== valkey and minIO tests ==================
+@patch("src.main.httpx.AsyncClient.get", new_callable=AsyncMock)
+@patch("src.main.valkey_client.set", new_callable=AsyncMock)
+@patch("src.main.Minio.put_object")
+async def test_valkey_and_minio_save(
+    mock_minio_put_object,
+    mock_valkey_set,
+    mock_httpx_get,
+    mock_sensor_data
+):
+    """ Verify a successful fetch cycle writes valid JSON to both Valkey and MinIO """
+    mock_httpx_get.return_value = mock_sensor_data
 
-def test_temperature_too_hot_status(client, hot_temperature_data):
-    """ Tests that the endpoint shows the correct status on hot temperatures """
-    with patch(MOCK_TARGET, new = AsyncMock(return_value = hot_temperature_data)):
-        response = client.get("/temperature")
-        assert response.json()["status"] == "Too Hot"
+    await run_fetch_and_store_cycle()
 
-def test_temperature_good_status(client, good_temperature_data):
-    """ Tests that the endpoint shows the correct status on good temperatures """
-    with patch(MOCK_TARGET, new = AsyncMock(return_value = good_temperature_data)):
-        response = client.get("/temperature")
-        assert response.json()["status"] == "Good"
+    # inspect valkey
+    mock_valkey_set.assert_awaited_once()
+    valkey_args, valkey_kwargs = mock_valkey_set.call_args
 
-def test_temperature_too_cold_status(client, cold_temperature_data):
-    """ Tests that the endpoint shows the correct status on cold temperatures """
-    with patch(MOCK_TARGET, new = AsyncMock(return_value = cold_temperature_data)):
-        response = client.get("/temperature")
-        assert response.json()["status"] == "Too Cold"
+    assert valkey_args[0] == "temperature"
+    assert valkey_kwargs["ex"] == 300
+
+    saved_cache_data = json.loads(valkey_args[1])
+
+    assert round(saved_cache_data["average_temperature"], 9) == 22.522630037
+    assert saved_cache_data["status"] == "Good"
+    assert "timestamp" in saved_cache_data
+
+    # inspect minio call
+    mock_minio_put_object.assert_called_once()
+    minio_kwargs = mock_minio_put_object.call_args.kwargs
+
+    assert minio_kwargs["bucket_name"] == "hivebox-data"
+    assert minio_kwargs["object_name"].startswith("temperature_")
+    assert minio_kwargs["object_name"].endswith(".json")
+    assert minio_kwargs["content_type"] == "application/json"
+
+    minio_payload = json.loads(minio_kwargs["data"].getvalue().decode("utf-8"))
+    assert minio_payload == saved_cache_data
 
 # ================== metrics endpoint tests ==================
 def test_metrics_endpoint_is_reachable(client):
@@ -90,12 +114,22 @@ def read_counter_metrics(metrics_text: str, counter_name: str, labels: str) -> f
     match = re.search(rf"{counter_name}\{{{labels}\}} (\d+\.?\d*)", metrics_text)
     return float(match.group(1)) if match else 0.0
 
-def test_temperature_counter_increments(client, mock_sensor_data):
-    """Hitting /temperature twice should increment the request counter by exactly 2.
+@patch("src.main.valkey_client.get", new_callable=AsyncMock)
+def test_temperature_counter_increments(
+    mock_valkey_get,
+    client,
+    ):
+    """Hitting cache twice should increment the request counter by exactly 2.
     
     Prometheus counters are global — they accumulate across the whole test session.
     So we read the counter before and after, and assert the delta is 2.
     """
+    expected_payload = {
+        "average_temperature": 22.5,
+        "status": "Good",
+        "timestamp": datetime.now(tz=UTC).isoformat()
+    }
+    mock_valkey_get.return_value = json.dumps(expected_payload)
 
     before = read_counter_metrics(
         client.get("/metrics").text,
@@ -103,9 +137,8 @@ def test_temperature_counter_increments(client, mock_sensor_data):
         'endpoint="/temperature"'
     )
 
-    with patch(MOCK_TARGET, return_value=mock_sensor_data):
-        client.get("/temperature")
-        client.get("/temperature")
+    client.get("/temperature")
+    client.get("/temperature")
 
 
     after = read_counter_metrics(
@@ -115,16 +148,37 @@ def test_temperature_counter_increments(client, mock_sensor_data):
     )
     assert after - before == 2.0, f"Expected counter to grow by 2, grew by {after - before}"
 
-def test_temperature_gauge_is_set_after_request(client, mock_sensor_data):
+@patch("src.main.valkey_client.get", new_callable=AsyncMock)
+def test_temperature_gauge_is_set_after_request(
+    mock_valkey_get,
+    client):
     """After a /temperature call, the gauge metric should reflect the average."""
-    with patch(MOCK_TARGET, return_value=mock_sensor_data):
-        client.get("/temperature")
+    expected_payload = {
+        "average_temperature": 22.5,
+        "status": "Good",
+        "timestamp": datetime.now(tz=UTC).isoformat()
+    }
+    mock_valkey_get.return_value = json.dumps(expected_payload)
+
+    client.get("/temperature")
     metrics = client.get("/metrics").text
+
     assert "hivebox_temperature_average_celsius" in metrics
 
-def test_latency_summary_is_recorded(client, mock_sensor_data):
+@patch("src.main.valkey_client.get", new_callable=AsyncMock)
+def test_latency_summary_is_recorded(
+    mock_valkey_get,
+    client,
+    ):
     """The Summary metric should appear in /metrics after a temperature request."""
-    with patch(MOCK_TARGET, return_value=mock_sensor_data):
-        client.get("/temperature")
+    expected_payload = {
+        "average_temperature": 22.5,
+        "status": "Good",
+        "timestamp": datetime.now(tz=UTC).isoformat()
+    }
+    mock_valkey_get.return_value = json.dumps(expected_payload)
+
+    client.get("/temperature")
     metrics = client.get("/metrics").text
+
     assert "hivebox_temperature_request_duration_in_seconds" in metrics
