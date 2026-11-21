@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 import redis.asyncio as redis
+import structlog
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from minio import Minio
@@ -16,6 +17,7 @@ from prometheus_client import Counter, Gauge, Summary, make_asgi_app
 from config import config
 from print_version import version_getter
 
+logger = structlog.get_logger()
 metrics_app = make_asgi_app()
 
 # Setting up the metrics targets
@@ -44,7 +46,7 @@ minio_client = Minio(
     secure=False  # HTTP
 )
 
-async def run_fetch_and_store_cycle():
+async def fetch_temperature():
     now = datetime.now(UTC)
     one_hour_ago = now - timedelta(hours = 1)
     with TEMPERATURE_REQUEST_LATENCY.time():
@@ -60,6 +62,12 @@ async def run_fetch_and_store_cycle():
                 },
                 timeout = 30.0)
                 avg_temp = get_avg_temp(response)
+                logger.debug(
+                    "opensensemap_raw_response",
+                    status_code=response.status_code,
+                    content_length=len(response.content),
+                    body_preview=response.text[:250],
+                    )
         except ValueError as e:
             raise HTTPException(status_code = 500, detail = str(e)) from e
 
@@ -72,29 +80,40 @@ async def run_fetch_and_store_cycle():
             "status": tmp_status,
             "timestamp": now.isoformat()
             }
-        json_string = json.dumps(final_payload)
-        
-        # Save to Valkey
-        await valkey_client.set("temperature", json_string, ex=300)
+        return final_payload
 
-        byte_stream = io.BytesIO(json_string.encode("utf-8"))
-        object_name = f"temperature_{final_payload['timestamp']}.json"
+async def run_fetch_and_store_cycle():
+    payload = await fetch_temperature()
+    await save_to_cache(payload)
+    save_to_storage(payload)
 
-        # save to MinIO bucket
-        minio_client.put_object(
-            bucket_name="hivebox-data",
-            object_name=object_name,
-            data=byte_stream,
-            length=len(json_string.encode("utf-8")),
-            content_type="application/json"
-        )
+async def save_to_cache(payload: dict) -> None:
+    json_string = json.dumps(payload)
+    await valkey_client.set("temperature", json_string, ex=300)
+
+
+# save to MinIO bucket
+def save_to_storage(payload: dict) -> None:
+    json_string = json.dumps(payload)
+    byte_stream = io.BytesIO(json_string.encode("utf-8"))
+    object_name = f"temperature_{payload['timestamp']}.json"
+
+    minio_client.put_object(
+        bucket_name="hivebox-data",
+        object_name=object_name,
+        data=byte_stream,
+        length=len(json_string.encode("utf-8")),
+        content_type="application/json"
+    )
 
 
 async def fetch_and_store_cycle():
     while True:
-        await fetch_and_store_cycle()
+        try:
+            await run_fetch_and_store_cycle()
+        except Exception as e:
+            logger.exception("unexpected_cycle_error", error=str(e))
         await asyncio.sleep(300) # 5 min.
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):    
@@ -102,7 +121,7 @@ async def lifespan(app: FastAPI):
 
     if not minio_client.bucket_exists(bucket_name):
         minio_client.make_bucket(bucket_name)
-        print(f"Created MinIO bucket: {bucket_name}")
+        logger.info(f"Created MinIO bucket: {bucket_name}")
 
     task = asyncio.create_task(fetch_and_store_cycle())
     
@@ -119,6 +138,26 @@ app.mount("/metrics", metrics_app)
 async def root():
     """The API's root"""
     return {"message": "welcome to the hivebox API"}
+
+
+@app.post("/cache")
+async def update_cache():
+    try:
+        payload = await fetch_temperature()
+        await save_to_cache(payload)
+        return {"message": "Cache updated", "data": payload}
+    except (ValueError, httpx.HTTPError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.post("/store")
+async def store_data():
+    try:
+        payload = await fetch_temperature()
+        save_to_storage(payload)
+        return {"message": "Data stored in MinIO", "data": payload}
+    except (ValueError, httpx.HTTPError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 # App Version Endpoint
 @app.get(

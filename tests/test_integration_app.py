@@ -67,7 +67,7 @@ def test_temperature_cache_miss(
 # ================== valkey and minIO tests ==================
 @patch("src.main.httpx.AsyncClient.get", new_callable=AsyncMock)
 @patch("src.main.valkey_client.set", new_callable=AsyncMock)
-@patch("src.main.Minio.put_object")
+@patch("src.main.minio_client.put_object")
 async def test_valkey_and_minio_save(
     mock_minio_put_object,
     mock_valkey_set,
