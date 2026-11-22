@@ -133,17 +133,20 @@ def test_temperature_counter_increments(
 
     before = read_counter_metrics(
         client.get("/metrics").text,
-        "hivebox_http_requests_total",
+        "hivebox_cache_hits_total",
         'endpoint="/temperature"'
     )
 
-    client.get("/temperature")
-    client.get("/temperature")
+    r1 = client.get("/temperature")
+    r2 = client.get("/temperature")
+    assert r1.status_code == 200, f"First request failed: {r1.status_code} {r1.text}"
+    assert r2.status_code == 200, f"Second request failed: {r2.status_code} {r2.text}"
+
 
 
     after = read_counter_metrics(
         client.get("/metrics").text,
-        "hivebox_http_requests_total",
+        "hivebox_cache_hits_total",
         'endpoint="/temperature"'
     )
     assert after - before == 2.0, f"Expected counter to grow by 2, grew by {after - before}"

@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
     api_url: str = "https://api.opensensemap.org/boxes/data"
+    expiration_time: int = 300
 
     valkey_url: str
     minio_endpoint: str

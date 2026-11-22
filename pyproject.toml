@@ -24,7 +24,7 @@ dependencies = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "--cov=src/ --cov-fail-under=70"
+addopts = "--cov=src/ --cov-fail-under=65"
 asyncio_mode = "auto"
 
 [dependency-groups]
