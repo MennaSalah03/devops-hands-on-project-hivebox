@@ -11,7 +11,6 @@ from fastapi.responses import JSONResponse
 
 from config import config
 from metrics import CACHE_HIT_COUNT, metrics_app
-from print_version import version_getter
 from services import minio_client, save_to_cache, save_to_storage, valkey_client
 from temperature import fetch_temperature
 
@@ -50,38 +49,6 @@ app = FastAPI(lifespan=lifespan)
 app.mount("/metrics", metrics_app)
 
 @app.get("/")
-async def root():
-    """The API's root"""
-    return {"message": "welcome to the hivebox API"}
-
-# App Version Endpoint
-@app.get(
-        "/version",
-        description = "gets the current app version in the SemVer form vx.x.x",
-        response_class = JSONResponse
-        )
-async def version():
-    """Gets the version of the app to the API"""
-    return {"version": str(version_getter("version.txt"))}
-
-# Temperature Enpoint
-@app.get(
-        "/temperature",
-        description = "shows average temperature and status for all senseboxes the were updated at most 1 hour from time of request",
-        response_class = JSONResponse
-        )
-async def temperature():
-    """Gets the temperature data from the opensensemap api"""
-    CACHE_HIT_COUNT.labels(endpoint="/temperature").inc()
-
-    cached_data = await valkey_client.get("temperature")
-    if cached_data:
-        return json.loads(cached_data)
-    
-    raise HTTPException(
-        status_code=503,
-        detail="Temperature data is initializing, please try again in a few seconds.")
-
 @app.get("/readyz")
 async def readiness_check():
     now = datetime.now(UTC)
@@ -130,6 +97,33 @@ async def update_cache():
     except (ValueError, httpx.HTTPError) as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 
+# App Version Endpoint
+@app.get(
+        "/version",
+        description = "gets the current app version (SemVer tag, commit SHA, or 'dev')",
+        response_class = JSONResponse
+        )
+async def version():
+    """Returns the current version of the app."""
+    return {"version": config.app_version}
+
+# Temperature Enpoint
+@app.get(
+        "/temperature",
+        description = "shows average temperature and status for all senseboxes the were updated at most 1 hour from time of request",
+        response_class = JSONResponse
+        )
+async def temperature():
+    """Gets the temperature data from the opensensemap api"""
+    CACHE_HIT_COUNT.labels(endpoint="/temperature").inc()
+
+    cached_data = await valkey_client.get("temperature")
+    if cached_data:
+        return json.loads(cached_data)
+    
+    raise HTTPException(
+        status_code=503,
+        detail="Temperature data is initializing, please try again in a few seconds.")
 
 @app.post("/store")
 async def store_data():

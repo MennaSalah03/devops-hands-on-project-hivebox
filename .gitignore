@@ -5,5 +5,4 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
-src/version.txt
 .env
