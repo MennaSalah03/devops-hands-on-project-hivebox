@@ -32,6 +32,9 @@ ENV PATH="/home/beekeeper/app/.venv/bin:$PATH" \
 COPY --from=builder --chown=1000:1000 /home/beekeeper/app/.venv /home/beekeeper/app/.venv
 COPY --from=builder --chown=1000:1000 /home/beekeeper/app/src /home/beekeeper/app/src
 
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
+
 USER 1000:1000
 
 EXPOSE 8000

@@ -31,7 +31,6 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      # Linting 
       - name: Lint Dockerfile
         run: docker run --rm -i hadolint/hadolint < Dockerfile
 
@@ -55,7 +54,7 @@ jobs:
           MINIO_SECRET_KEY: "test-secret"
         run: uv run pytest
 
-      - name: Resolve app version
+      - name: Fetch app version
         id: version
         run: |
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
