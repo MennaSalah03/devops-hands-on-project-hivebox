@@ -2,16 +2,47 @@
 import json
 import re
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from src.main import run_fetch_and_store_cycle
 
 
-# ================== Root status check ==================
+# ================== Root & /readyz checks ==================
 def test_root(client):
-    """ Test the response of API root endpoint """
+    """Verify root redirects to /readyz."""
+    response = client.get("/", follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == "/readyz"
+
+@patch("src.main.valkey_client.get", new_callable=AsyncMock)
+@patch("src.main.minio_client.list_objects")
+def test_root_redirects_to_readyz_healthy(
+    mock_minio_list_objects,
+    mock_valkey_get,
+    client,
+):
+    """Verify / redirects to /readyz and returns 200 when Valkey and MinIO are fresh."""
+    now = datetime.now(tz=UTC)
+    expected_payload = {
+        "average_temperature": 22.5,
+        "status": "Good",
+        "timestamp": now.isoformat(),
+        "total_boxes": 59316,
+        "accessible_boxes": 59316
+    }
+    mock_valkey_get.return_value = json.dumps(expected_payload)
+
+    # 2. Mock fresh MinIO object with a .last_modified attribute
+    fake_obj = MagicMock()
+    fake_obj.last_modified = now
+    mock_minio_list_objects.return_value = [fake_obj]
+
     response = client.get("/")
-    assert response.status_code == 200
+
+    assert response.status_code == 200, response.json()
+    mock_valkey_get.assert_awaited_once_with("temperature")
+    mock_minio_list_objects.assert_called_once()
+
 # ================== version endpoint tests ==================
 def test_version(client):
     """ Test the response of version endpoint """

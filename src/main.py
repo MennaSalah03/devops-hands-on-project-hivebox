@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import structlog
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from config import config
 from metrics import CACHE_HIT_COUNT, metrics_app
@@ -48,7 +48,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.mount("/metrics", metrics_app)
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse(url="/readyz")
+
 @app.get("/readyz")
 async def readiness_check():
     now = datetime.now(UTC)
