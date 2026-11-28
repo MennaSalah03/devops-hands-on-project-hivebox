@@ -12,9 +12,9 @@
 
 HiveBox is a containerized environmental telemetry service that ingests real-time global temperature data from the [openSenseMap API](https://github.com/sensebox/openSenseMap-API/tree/master), caches it in Valkey for low-latency reads, and archives historical snapshots to MinIO.
 
-The Goal: Rather than stopping at a working API, HiveBox is engineered to solve the operational problems of running a backend service in production—decoupling client requests from slow upstream APIs, validating data freshness via Kubernetes readiness probes (/readyz), exposing Prometheus metrics, and automating the path from commit to cluster through security-scanned CI/CD pipelines.
+The Goal: Rather than stopping at a working API, HiveBox is engineered to solve the operational problems of running a backend service in production decoupling client requests from slow upstream APIs, validating data freshness via Kubernetes readiness probes (/readyz), exposing Prometheus metrics, and automating the path from commit to cluster through security-scanned CI/CD pipelines.
 
-If you are attempting to do this project or a similar one, I have compiled most of the resources that helped me throughout my journey, you can find it in the `docs/RESOURCES.md` file or [here](https://github.com/MennaSalah03/devops-hands-on-project-hivebox/blob/main/docs/RESOURCES.md))
+If you are attempting to do this project or a similar one, I have compiled most of the resources that helped me throughout my journey, you can find it in the `docs/RESOURCES.md` file or [here](https://github.com/MennaSalah03/devops-hands-on-project-hivebox/blob/main/docs/RESOURCES.md)
 
 The final architecture of the project:
 
@@ -26,39 +26,40 @@ The final architecture of the project:
 
 ```
 .
-├── build.sh
 ├── docker-compose.yaml
 ├── Dockerfile
 ├── docs
 │   ├── DEVLOG.md
 │   └── RESOURCES.md
+├── .github
+│   └── workflows
+│       ├── hivebox-cd.yml
+│       ├── hivebox-ci.yml
+│       └── scorecard.yml
+├── .gitignore
 ├── k8s_manifests
-│   ├── hivebox-confimap.yaml
+│   ├── hivebox-configmap.yaml
 │   ├── hivebox-deployment.yaml
 │   ├── hivebox-ingress.yaml
 │   ├── hivebox-service.yaml
 │   └── kind.yaml
-├── main.py
 ├── pyproject.toml
 ├── README.md
 ├── src
 │   ├── config.py
 │   ├── main.py
 │   ├── metrics.py
-│   ├── print_version.py
 │   ├── services.py
-│   ├── temperature.py
-│   └── version.txt
+│   └── temperature.py
 ├── tests
 │   ├── conftest.py
 │   ├── __init__.py
 │   ├── test_integration_app.py
-│   ├── test_unit_app.py
-│   └── test_version_printer.py
+│   └── test_unit_app.py
 └── uv.lock
 ```
 
-Current Tech Stack:
+## Tech Stack:
 - Backend: Python 3.12, FastAPI
 - Package Manager: uv
 - Testing: Pytest, unittest
@@ -67,43 +68,34 @@ Current Tech Stack:
 - CI/CD: GitHub Actions
 - Observability: Prometheus
 - Security: OpenSSF Scorecard
-- Lining: Ruff, Hadolint
+- Linting: Ruff, Hadolint
 - Orchestration: Kubernetes
-- Registry: github container registry (ghcr.io)
+- Registry: GitHub Container Registry (ghcr.io)
 
 ### How to Use the App
 For developer local setup:
-1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer)
-2. Sync environment: `uv sync`
-3. Run Tests using pytest: `pytest tests/`
-4. Install KIND
-5. Local Build: bash build.sh (This script handles local image creation). Ensure it's executable before running. `chmod +x build.sh`
+1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/#standalone-installer) if not already installed.
+2. Install dependencies:
+```bash
+uv sync
+```
+1. Run Tests using pytest:
+```bash
+uv run pytest
+```
+3. Build app and run the containers using docker compose:
+```bash
+docker compose up --build
+```
 
 ### App's API Endpoints:
-`GET` endpoints:
-- `/`: Discplays Welcome message `{"message": "Welcome to HiveBox"}`
-- `/version`: Returns current SemVer `{"version": "1.2.0"}`
-- `/temperature`: Returns global temperature sensors average `"{"average_temperature": 22.5}`
-- `/metrics`: Returns metrics about the `/temperature` endpoint (Counter for reuests, Gauge of the current average temperature, and the interval for data to load).
-- `/readyz`:
-`POST` endpoints
-- `/cache`
-- `/store`
+**`GET` endpoints:**
+- `/`: redirected to `/readyz`
+- `/version`: RetuReturns the running APP_VERSION (dev, sha-\<hash\>, or SemVer tag).
+- `/temperature`: Returns cached global average temperature, status, and timestamp
+- `/metrics`: Exposes Prometheus metrics (request counter, average temperature gauge, fetch interval).
+- `/readyz`: Kubernetes readiness probe—verifies Valkey freshness, MinIO freshness, and sensor health ratio (200 or 503).
 
-
-### CI/CD
-```
-push changes to main
-├── CI runs lint ✅
-├── CI runs tests (unit and integration tests) ✅
-├── CI builds hivebox:SHA ✅
-├── CI pushes :ci-candidate to GHCR ✅
-├── CI uploads version artifact ✅
-└── Terrascan, OSSF scoreboard, SAST jobs run and upload sarif files to GitHub ✅
-      ↓
-CD triggered
-├── pulls :ci-candidate
-├── Create KIND cluster and spin up the pod(s).
-├── Verify rollout
-└── pushes final tags ✅
-```
+**`POST` endpoints:**
+- `/cache`: Triggers an on-demand refresh of the Valkey cache
+- `/store`: Archives the current temperature snapshot to MinIO

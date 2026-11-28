@@ -91,15 +91,6 @@ async def readiness_check():
 
     return {"status": "ready"}
 
-@app.post("/cache")
-async def update_cache():
-    try:
-        payload = await fetch_temperature()
-        await save_to_cache(payload)
-        return {"message": "Cache updated", "data": payload}
-    except (ValueError, httpx.HTTPError) as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
-
 # App Version Endpoint
 @app.get(
         "/version",
@@ -127,6 +118,16 @@ async def temperature():
     raise HTTPException(
         status_code=503,
         detail="Temperature data is initializing, please try again in a few seconds.")
+
+@app.post("/cache")
+async def update_cache():
+    try:
+        payload = await fetch_temperature()
+        await save_to_cache(payload)
+        return {"message": "Cache updated", "data": payload}
+    except (ValueError, httpx.HTTPError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 @app.post("/store")
 async def store_data():
