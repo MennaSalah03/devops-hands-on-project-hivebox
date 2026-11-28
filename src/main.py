@@ -1,111 +1,139 @@
 """ Hivebox's API Application using Fastapi """
-
+import asyncio
+import json
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 
 import httpx
+import structlog
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
-from prometheus_client import Counter, Gauge, Summary, make_asgi_app
+from fastapi.responses import JSONResponse, RedirectResponse
 
-from print_version import version_getter
+from config import config
+from metrics import CACHE_HIT_COUNT, metrics_app
+from services import minio_client, save_to_cache, save_to_storage, valkey_client
+from temperature import fetch_temperature
 
-app = FastAPI()
-metrics_app = make_asgi_app()
+logger = structlog.get_logger()
+
+async def run_fetch_and_store_cycle():
+    payload = await fetch_temperature()
+    await save_to_cache(payload)
+    save_to_storage(payload)
+
+async def fetch_and_store_cycle():
+    while True:
+        try:
+            await run_fetch_and_store_cycle()
+        except Exception as e:
+            logger.exception("unexpected_cycle_error", error=str(e))
+        await asyncio.sleep(config.expiration_time) # 5 min.
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):    
+    bucket_name = config.minio_bucket
+
+    if not minio_client.bucket_exists(bucket_name):
+        minio_client.make_bucket(bucket_name)
+        logger.info(f"Created MinIO bucket: {bucket_name}")
+
+    task = asyncio.create_task(fetch_and_store_cycle())
+    
+    yield
+    
+    # SHUTDOWN
+    task.cancel()
+    await valkey_client.aclose()
+
+app = FastAPI(lifespan=lifespan)
 app.mount("/metrics", metrics_app)
 
-# Setting up the metrics targets
-TEMPERATURE_REQUEST_COUNTER = Counter(
-    "hivebox_http_requests_total",
-    "Total number of HTTP requests processed, labeled by endpoint",
-    ["endpoint"],
-)
-
-TEMPERATURE_GAUGE = Gauge(
-    "hivebox_temperature_average_celsius",
-    "The most recent average temperature fetched from openSenseMap"
-)
-
-TEMPERATURE_REQUEST_LATENCY = Summary(
-    "hivebox_temperature_request_duration_in_seconds",
-    "Time spent getting and processing temperature data from all sense boxes"
-)
-
-
-# API's root
-@app.get("/")
+@app.get("/", include_in_schema=False)
 async def root():
-    """The API's root"""
-    return {"message": "welcome to the hivebox API"}
+    return RedirectResponse(url="/readyz")
+
+@app.get("/readyz")
+async def readiness_check():
+    now = datetime.now(UTC)
+    staleness_time = timedelta(seconds = float(2 * config.expiration_time))
+
+    cached_raw = await valkey_client.get("temperature")
+    if not cached_raw:
+        raise HTTPException(status_code=503, detail="Cache is empty")
+
+    # check cache freshness
+    cached_data = json.loads(cached_raw)
+    cache_age = now - datetime.fromisoformat(cached_data["timestamp"])
+
+    if cache_age > staleness_time:
+        raise HTTPException(status_code=503, detail="Cache is stale (> 2 cycles)")
+
+    # check boxes availability
+    total_boxes = cached_data.get("total_boxes", 0)
+    accessible_boxes = cached_data.get("accessible_boxes", 0)
+    if total_boxes == 0 or (total_boxes - accessible_boxes) >= (total_boxes // 2) + 1:
+        raise HTTPException(status_code=503, detail="Majority of senseBoxes inaccessible")
+
+    # Check MinIO storage freshness
+    try:
+        objects = list(minio_client.list_objects(config.minio_bucket, prefix="temperature_"))
+        if not objects:
+            raise HTTPException(status_code=503, detail="No stored data in MinIO")
+
+        latest_obj = max(objects, key=lambda obj: obj.last_modified)
+        storage_age = now - latest_obj.last_modified
+        if storage_age > staleness_time:
+            raise HTTPException(status_code=503, detail="Stored data is stale (> 2 cycles)")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"MinIO check failed: {e}") from e
+
+    return {"status": "ready"}
 
 # App Version Endpoint
 @app.get(
         "/version",
-        description = "gets the current app version in the SemVer form vx.x.x",
+        description = "gets the current app version (SemVer tag, commit SHA, or 'dev')",
         response_class = JSONResponse
         )
 async def version():
-    """Gets the version of the app to the API"""
-    return {"version": str(version_getter("version.txt"))}
+    """Returns the current version of the app."""
+    return {"version": config.app_version}
 
 # Temperature Enpoint
 @app.get(
         "/temperature",
-        description = "shows average temperature and status for all senseboxes data",
+        description = "shows average temperature and status for all senseboxes the were updated at most 1 hour from time of request",
         response_class = JSONResponse
         )
 async def temperature():
     """Gets the temperature data from the opensensemap api"""
-    api_url = "https://api.opensensemap.org/boxes/data"
-    now = datetime.now(UTC)
-    one_hour_ago = now - timedelta(hours = 1)
-    with TEMPERATURE_REQUEST_LATENCY.time():
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url = api_url , params = {
-                "bbox": "-180,-90,180,90",
-                "phenomenon": "Temperatur",
-                "format": "json",
-                "from-date": one_hour_ago.strftime("%Y-%m-%dT%H:%M:%S.000000Z"),
-                "to-date": now.strftime("%Y-%m-%dT%H:%M:%S.000000Z"),
-                "download": "false"
-                },
-                timeout = 30.0)
-                avg_temp = get_avg_temp(response)
-        except ValueError as e:
-            raise HTTPException(status_code = 500, detail = str(e)) from e
-    # Pushing metrics to registry
-    TEMPERATURE_REQUEST_COUNTER.labels(endpoint="/temperature").inc()
-    TEMPERATURE_GAUGE.set(avg_temp)
-    # Get temperature status
-    tmp_status = temperature_status(avg_temp)
-    # return enpoint with average temperature and status.
-    return {"average_temperature": avg_temp, "status": tmp_status}
+    CACHE_HIT_COUNT.labels(endpoint="/temperature").inc()
 
-def get_avg_temp(api_response: dict) -> float:
-    """calculates and returns the average temperature
-        with the opensense API json response to """
-    json_response = api_response.json()
-    temp_sum = 0
-    temp_count = 0
-    for sensor in json_response:
-        try:
-            temp_sum += float(sensor["value"])
-            temp_count += 1
-        except (ValueError, TypeError, KeyError):
-            continue # ignore other types than float
-    if temp_count == 0:
-        raise ValueError("no valid temperature readings found")
-    return temp_sum / temp_count
+    cached_data = await valkey_client.get("temperature")
+    if cached_data:
+        return json.loads(cached_data)
+    
+    raise HTTPException(
+        status_code=503,
+        detail="Temperature data is initializing, please try again in a few seconds.")
 
-def temperature_status(average_temperature: float) -> str:
-    """ Returns the status of temperature according to the range it belongs to.
-        Less than 10 deg.: too cold
-        Between 10 adn 36 deg.: Good
-        Higher than 36: Too hot
-        """
-    if average_temperature <= 10.0:
-        return "Too Cold"
-    elif average_temperature > 10.0 and average_temperature <= 36.0:
-        return "Good"
-    elif average_temperature > 36.0:
-        return "Too Hot"
+@app.post("/cache")
+async def update_cache():
+    try:
+        payload = await fetch_temperature()
+        await save_to_cache(payload)
+        return {"message": "Cache updated", "data": payload}
+    except (ValueError, httpx.HTTPError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@app.post("/store")
+async def store_data():
+    try:
+        payload = await fetch_temperature()
+        save_to_storage(payload)
+        return {"message": "Data stored in MinIO", "data": payload}
+    except (ValueError, httpx.HTTPError) as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e

@@ -1,11 +1,14 @@
 """ Test fixtures """
-from unittest.mock import MagicMock
-from fastapi.testclient import TestClient
-import pytest
 import os
 import sys
+from unittest.mock import MagicMock
+
+import pytest
+from fastapi.testclient import TestClient
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 from src.main import app
+
 
 @pytest.fixture
 def client():

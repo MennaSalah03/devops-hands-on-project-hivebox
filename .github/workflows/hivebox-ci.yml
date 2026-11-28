@@ -3,8 +3,9 @@ name: hivebox-ci
 on:
   push:
     branches:
-     - main
-     - feature/*
+      - main
+    tags:
+      - "v*.*.*"
   pull_request:
     branches:
       - main
@@ -12,7 +13,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref ||  github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   hivebox-build-and-test:
@@ -22,7 +23,7 @@ jobs:
       packages: write
     outputs:
       built: ${{ steps.build.outputs.built }}
-      image_version: ${{ steps.build.outputs.image_version }}
+      app_version: ${{ steps.version.outputs.app_version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd #v6.0.2
@@ -30,7 +31,6 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      # Linting 
       - name: Lint Dockerfile
         run: docker run --rm -i hadolint/hadolint < Dockerfile
 
@@ -46,20 +46,35 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
-      - name: Create dummy version file for tests
-        run: echo "v0.0.0" > src/version.txt
-
       - name: Unit Testing
-        run: uv run pytest tests/
+        env:
+          VALKEY_URL: "redis://localhost:6379"
+          MINIO_ENDPOINT: "localhost:9000"
+          MINIO_ACCESS_KEY: "test-access"
+          MINIO_SECRET_KEY: "test-secret"
+        run: uv run pytest
 
-      # Build docker image
-      - name: building the docker image for hivebox
+      - name: Fetch app version
+        id: version
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="sha-$(git rev-parse --short HEAD)"
+          fi
+          echo "app_version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build Docker image
         id: build
-        run: ./build.sh
+        run: |
+          docker build \
+            --build-arg APP_VERSION="${{ steps.version.outputs.app_version }}" \
+            -t hivebox:${{ steps.version.outputs.app_version }} \
+            .
+          echo "built=true" >> "$GITHUB_OUTPUT"
 
-        # pushing the image to registry + save and upload the version to use in CD
       - name: Log in to GHCR
-        if: steps.build.outputs.built == 'true'
+        if: steps.build.outputs.built == 'true' && github.event_name == 'push'
         uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
@@ -67,25 +82,21 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push image to registry after renaming it according to the standards.
-        if: steps.build.outputs.built == 'true'
+        if: steps.build.outputs.built == 'true' && github.event_name == 'push'
         run: |
           # change tag to suit the ghcr accepted format (owner name is in Lowercase (LC))
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          docker tag hivebox:${{ steps.build.outputs.image_version }} ghcr.io/${OWNER_LC}/hivebox:${{ steps.build.outputs.image_version }}
-          docker push ghcr.io/${OWNER_LC}/hivebox:${{ steps.build.outputs.image_version }}
+          docker tag hivebox:${{ steps.build.outputs.app_version }} ghcr.io/${OWNER_LC}/hivebox:${{ steps.build.outputs.app_version }}
+          docker push ghcr.io/${OWNER_LC}/hivebox:${{ steps.build.outputs.app_version }}
 
-      - name: Save image version
-        if: steps.build.outputs.built == 'true'
-        run: echo "${{ steps.build.outputs.image_version }}" > image_version.txt
-
-      - name: Upload version artifact
-        if: steps.build.outputs.built == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1 
-        with:
-          name: image-version
-          path: image_version.txt
-          
-  # Setting up OSSF scoreboard
+  # deploy:
+  #   needs: hivebox-build-and-test
+  #   if: github.event_name == 'push'
+  #   uses: ./.github/workflows/hivebox-cd.yml
+  #   with:
+  #     image_version: ${{ needs.hivebox-build-and-test.outputs.app_version }}
+  #   secrets: inherit
+  
   ossf_scorecard:
     needs: hivebox-build-and-test
     if: github.ref == 'refs/heads/main'
@@ -162,7 +173,7 @@ jobs:
           id: scan
           continue-on-error: true
           run: |
-            terrascan scan -i k8s -d ./k8_manifests -o sarif > terrascan.sarif
+            terrascan scan -i k8s -d ./k8s_manifests -o sarif > terrascan.sarif
 
         - name: Verify SARIF file integrity
           id: check_sarif

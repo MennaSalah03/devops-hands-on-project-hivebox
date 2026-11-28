@@ -8,10 +8,26 @@ dependencies = [
     "asyncmock>=0.4.2",
     "fastapi>=0.135.3",
     "httpx[h2]>=0.28.1",
+    "minio>=7.2.20",
     "prometheus-client>=0.25.0",
     "pydantic-settings>=2.13.1",
     "pylint>=4.0.5",
     "pytest>=9.0.2",
+    "pytest-cov>=7.1.0",
+    "redis>=8.1.0",
     "slowapi>=0.1.9",
+    "structlog>=26.1.0",
     "uvicorn[standard]>=0.43.0",
+]
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "--cov=src/ --cov-fail-under=70"
+asyncio_mode = "auto"
+
+[dependency-groups]
+dev = [
+    "pytest-asyncio>=1.5.0",
 ]
