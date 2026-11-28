@@ -86,16 +86,8 @@ jobs:
         run: |
           # change tag to suit the ghcr accepted format (owner name is in Lowercase (LC))
           OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          docker tag hivebox:${{ steps.build.outputs.app_version }} ghcr.io/${OWNER_LC}/hivebox:${{ steps.build.outputs.app_version }}
-          docker push ghcr.io/${OWNER_LC}/hivebox:${{ steps.build.outputs.app_version }}
-
-  # deploy:
-  #   needs: hivebox-build-and-test
-  #   if: github.event_name == 'push'
-  #   uses: ./.github/workflows/hivebox-cd.yml
-  #   with:
-  #     image_version: ${{ needs.hivebox-build-and-test.outputs.app_version }}
-  #   secrets: inherit
+          docker tag hivebox:${{ steps.version.outputs.app_version }} ghcr.io/${OWNER_LC}/hivebox:${{ steps.version.outputs.app_version }}
+          docker push ghcr.io/${OWNER_LC}/hivebox:${{ steps.version.outputs.app_version }}
   
   ossf_scorecard:
     needs: hivebox-build-and-test
